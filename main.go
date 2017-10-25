@@ -30,9 +30,47 @@ func main() {
 		MaxHeaderBytes: 1 << 20, // Max header of 1MB
 	}
 
-	requestHandler := makeForkRequestHandler(watchdogConfig)
+	var requestHandler http.HandlerFunc
+
+	if watchdogConfig.OperationalMode == config.ModeStreaming {
+		log.Println("OperationalMode: Streaming")
+		requestHandler = makeForkRequestHandler(watchdogConfig)
+	} else {
+		log.Println("OperationalMode: AfterBurn")
+		requestHandler = makeAfterBurnRequestHandler(watchdogConfig)
+	}
+
 	http.HandleFunc("/", requestHandler)
 	log.Fatal(s.ListenAndServe())
+}
+
+func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
+
+	commandName, arguments := watchdogConfig.Process()
+	functionInvoker := functions.AfterBurnFunctionRunner{
+		Process:     commandName,
+		ProcessArgs: arguments,
+	}
+	fmt.Printf("Forking - %s %s\n", commandName, arguments)
+	functionInvoker.Start()
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		req := functions.FunctionRequest{
+			Process:      commandName,
+			ProcessArgs:  arguments,
+			InputReader:  r.Body,
+			OutputWriter: w,
+		}
+		functionInvoker.Mutex.Lock()
+
+		err := functionInvoker.Run(req, r.ContentLength, r, w)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+		}
+		functionInvoker.Mutex.Unlock()
+	}
 }
 
 func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {

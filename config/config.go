@@ -13,6 +13,7 @@ type WatchdogConfig struct {
 	FunctionProcess  string
 	InjectCGIHeaders bool
 	HardTimeout      time.Duration
+	OperationalMode  int
 }
 
 func (w WatchdogConfig) Process() (string, []string) {
@@ -33,7 +34,24 @@ func New() (WatchdogConfig, error) {
 		FunctionProcess:  os.Getenv("fprocess"),
 		InjectCGIHeaders: true,
 		HardTimeout:      5 * time.Second,
+		OperationalMode:  ModeStreaming,
 	}
 
 	return config, nil
+}
+
+const (
+	ModeStreaming = 1
+	ModeAfterBurn = 2
+)
+
+func WatchdogMode(mode int) string {
+	switch mode {
+	case ModeStreaming:
+		return "streaming"
+	case ModeAfterBurn:
+		return "afterburn"
+	default:
+		return "unknown"
+	}
 }
