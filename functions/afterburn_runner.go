@@ -19,6 +19,7 @@ type AfterBurnFunctionRunner struct {
 	Mutex       sync.Mutex
 }
 
+// Start forks the process used for processing incoming requests
 func (f *AfterBurnFunctionRunner) Start() error {
 	cmd := exec.Command(f.Process, f.ProcessArgs...)
 

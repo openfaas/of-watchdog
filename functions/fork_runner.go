@@ -19,8 +19,9 @@ type FunctionRequest struct {
 	ProcessArgs []string
 	Environment []string
 
-	InputReader  io.ReadCloser
-	OutputWriter io.Writer
+	InputReader   io.ReadCloser
+	OutputWriter  io.Writer
+	ContentLength *int64
 }
 
 // ForkFunctionRunner forks a process for each invocation
