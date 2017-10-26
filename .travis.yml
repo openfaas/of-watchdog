@@ -1,27 +1,23 @@
 sudo: required
-
 services:
-      - docker
+- docker
 addons:
   apt:
     packages:
-      - docker-ce
-
-before_install:
-
+    - docker-ce
+before_install: 
 script:
-    - sh build.sh
-
+- sh build.sh
 deploy:
   provider: releases
   api_key:
-      secure: "s3ZoNs8h5giqRnWrCVBrFdEdJjaQBjb5EwvwgCniDg8fy2zS56ZzBC2y63GTKLbmrlKsHLjAnvcfpvK09DloHmxYlk7UEhkzUI8UEwoMzYU/+B201h0130RicmKRABcu0tqm2xHjNx05W4RXF+CnA1tdqQSzjsKZ97qekWJ8VF5P5krDVMTDplQEdDtAZe2HA/Qfs5HktHnNjkU3nf8KXoKTewQ+Yb0hLSrKT+tClZTafyIXnsse7Rv/inFKwd0CFodM9EuRV8Up5Ri8/rlF5jF4cRARnUppRlxgBoTx+uhfGLxitiycUY7lOTUtqsrsNTekOkmJchwt4lWfbXXwjMv7LA5sK8CKs6TFa32Z98W/j4wG/AEqDHygduuI2sHyO4Yr1/Y11gXOxlIeKx3dI+cUcjIeBumuKTy7xratSizoZHR4Ue1kmlmw4lpr8Rt3XEyoK2TupUJIm5Xmn4Q9gtg+GhNdHd8CkeXqbs4ab8rwYfmkAs4T9qEhV0c0rAbPldTD7HFf3iphfvZeIl9qzZWj7Ay7LXUVDG6y4Jq1guUgAiQWAkYpCUPKe3mXsTpnoQwRO5XWLpXRcSgHrWH/wGEk6Y+E7BdV/U6qy+XFf2zSdj9cgmLab+taFS8Ra3NDy1IxziMFEsNoaMVyEc2Gd9J2xplib2AyHmMx45yuMRc="
-  file: 
-  - ./of-watchdog
-  - ./of-watchdog-armhf
-  - ./of-watchdog-arm64
-  - ./of-watchdog-darwin
-  - ./of-watchdog.exe
+    secure: "viDbC8aYSozUuEC6KTZz9oJIcwLqSD/vM0o8WeWnnrdTmJfFnt2meNaco6MWE4OcaJv9teS1nic4VzYY8rMtAWWs9nTEdWytuJiyXYbEzaquAnNlMwZT4szHVyDAHjcnkiFHGhhMqYjnsFpRfk8BzjLG5IrouKh5gyVSRTCsFR8hQeJXE6HlKBUC4uppZ/tghsXt5PeXSQH2zPWEotGpbojdO3CWHI2JXPjzqWYB976hkGUkDOx2p+YklldZ/apjkLWt9KwK9kl02TdtS+IXu1v5itIcg4rs320t50d96eUPAETznh3RPN5g62IRgMTnTA9I5TsHKvYLDgZYdvReF3Wex/qAVwLzYWcV4tf8Gwi7LAZQyixjXGgqY0kKZ594D16zwhJhmqmFtTnSJwsXulEStgsRfzLRiUMybq8M2lCfIHELi1mD2ANqXP8AfkJBu3+ZpYL0fEmH+4M1R+FOxlxvvTFd7Hj72bAPy9ccWCTmBi5SCiAapnpTbIeizMGc23fMrlnK0+aNE+gyIWqLEuqyic/SEoL89mToClxUcjVORTle4pRaEu+3fYRp8h4LVhvrLWeE6tG5xy7Pf2SFaj5EMeYbq6HiDh2gaTh6ZUW1uPn6RTRjMxOsTArq+deTeZWPu5buJz6A4etj8e3TqZbrVz71a+X9fggvKfIeQvs="
+  file:
+  - "./of-watchdog"
+  - "./of-watchdog-armhf"
+  - "./of-watchdog-arm64"
+  - "./of-watchdog-darwin"
+  - "./of-watchdog.exe"
   skip_cleanup: true
   on:
     tags: true
