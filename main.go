@@ -32,12 +32,19 @@ func main() {
 
 	var requestHandler http.HandlerFunc
 
-	if watchdogConfig.OperationalMode == config.ModeStreaming {
+	switch watchdogConfig.OperationalMode {
+	case config.ModeStreaming:
 		log.Println("OperationalMode: Streaming")
 		requestHandler = makeForkRequestHandler(watchdogConfig)
-	} else {
+		break
+	case config.ModeSerializing:
+		log.Println("OperationalMode: Serializing")
+		requestHandler = makeSerializingForkRequestHandler(watchdogConfig)
+		break
+	case config.ModeAfterBurn:
 		log.Println("OperationalMode: AfterBurn")
 		requestHandler = makeAfterBurnRequestHandler(watchdogConfig)
+		break
 	}
 
 	http.HandleFunc("/", requestHandler)
@@ -73,7 +80,41 @@ func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http
 	}
 }
 
+func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
+	functionInvoker := functions.SerializingForkFunctionRunner{
+		HardTimeout: watchdogConfig.HardTimeout,
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		var environment []string
+
+		if watchdogConfig.InjectCGIHeaders {
+			environment = getEnvironment(r)
+		}
+
+		commandName, arguments := watchdogConfig.Process()
+		req := functions.FunctionRequest{
+			Process:       commandName,
+			ProcessArgs:   arguments,
+			InputReader:   r.Body,
+			ContentLength: &r.ContentLength,
+			OutputWriter:  w,
+			Environment:   environment,
+		}
+
+		err := functionInvoker.Run(req, w)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
 func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
+	functionInvoker := functions.ForkFunctionRunner{
+		HardTimeout: watchdogConfig.HardTimeout,
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		var environment []string
@@ -89,10 +130,6 @@ func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 			InputReader:  r.Body,
 			OutputWriter: w,
 			Environment:  environment,
-		}
-
-		functionInvoker := functions.ForkFunctionRunner{
-			HardTimeout: watchdogConfig.HardTimeout,
 		}
 
 		err := functionInvoker.Run(req)

@@ -34,15 +34,16 @@ func New() (WatchdogConfig, error) {
 		FunctionProcess:  os.Getenv("fprocess"),
 		InjectCGIHeaders: true,
 		HardTimeout:      5 * time.Second,
-		OperationalMode:  ModeStreaming,
+		OperationalMode:  ModeSerializing,
 	}
 
 	return config, nil
 }
 
 const (
-	ModeStreaming = 1
-	ModeAfterBurn = 2
+	ModeStreaming   = 1
+	ModeSerializing = 2
+	ModeAfterBurn   = 3
 )
 
 func WatchdogMode(mode int) string {
@@ -51,6 +52,8 @@ func WatchdogMode(mode int) string {
 		return "streaming"
 	case ModeAfterBurn:
 		return "afterburn"
+	case ModeSerializing:
+		return "serializing"
 	default:
 		return "unknown"
 	}
