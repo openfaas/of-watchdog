@@ -46,3 +46,4 @@ HTTP headers can be set even after executing the function.
 A static Content-type can be set ahead of time.
 
 Hard timeout: supported.
+
