@@ -2,13 +2,13 @@
 
 This is a re-write of the OpenFaaS watchdog.
 
+[Original Watchdog source-code](https://github.com/openfaas/faas/tree/master/watchdog)
+
 ### Goals:
 * Cleaner abstractions for maintenance
 * Explore streaming for large files (beyond disk/RAM capacity)
 
 ![](https://camo.githubusercontent.com/61c169ab5cd01346bc3dc7a11edc1d218f0be3b4/68747470733a2f2f7062732e7477696d672e636f6d2f6d656469612f4447536344626c554941416f34482d2e6a70673a6c61726765)
-
-[Original Watchdog source-code](https://github.com/openfaas/faas/tree/master/watchdog)
 
 ## Watchdog modes:
 
@@ -16,7 +16,7 @@ The original watchdog supported mode 3 Serializing fork and has support for mode
 
 When complete this work will support all three modes and additional stretch goal of:
 
-* multi-part forms
+* Handling of multi-part forms
 
 ### 1. Streaming fork (implemented) - default.
 
