@@ -6,9 +6,19 @@ This is a re-write of the OpenFaaS watchdog.
 * Cleaner abstractions for maintenance
 * Explore streaming for large files (beyond disk/RAM capacity)
 
+![](https://camo.githubusercontent.com/61c169ab5cd01346bc3dc7a11edc1d218f0be3b4/68747470733a2f2f7062732e7477696d672e636f6d2f6d656469612f4447536344626c554941416f34482d2e6a70673a6c61726765)
+
+[Original Watchdog source-code](https://github.com/openfaas/faas/tree/master/watchdog)
+
 ## Watchdog modes:
 
-### Streaming fork (implemented) - default.
+The original watchdog supported mode 3 Serializing fork and has support for mode 2 Afterburn in an open PR.
+
+When complete this work will support all three modes and additional stretch goal of:
+
+* multi-part forms
+
+### 1. Streaming fork (implemented) - default.
 
 Forks a process per request and can deal with more data than is available memory capacity - i.e. 512mb VM can process multiple GB of video.
 
@@ -18,7 +28,7 @@ HTTP headers cannot be sent after function starts executing due to input/output 
 
 * Hard timeout: supported.
 
-### afterburn (implemented)
+### 2. Afterburn (implemented)
 
 Uses a single process for all requests, if that request dies the container dies.
 
@@ -40,7 +50,7 @@ https://github.com/alexellis/python-afterburn
 
 https://github.com/alexellis/java-afterburn
 
-### Serializing fork (implemented in dev-branch)
+### 3. Serializing fork (implemented in dev-branch)
 
 Forks one process per request. Multi-threaded. Ideal for retro-fitting a CGI application handler i.e. for Flask.
 
