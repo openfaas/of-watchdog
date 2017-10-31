@@ -16,6 +16,7 @@ type AfterBurnFunctionRunner struct {
 	Command     *exec.Cmd
 	StdinPipe   io.WriteCloser
 	StdoutPipe  io.ReadCloser
+	Stderr      io.Writer
 	Mutex       sync.Mutex
 }
 
@@ -36,6 +37,24 @@ func (f *AfterBurnFunctionRunner) Start() error {
 	if stdoutErr != nil {
 		return stdoutErr
 	}
+
+	errPipe, _ := cmd.StderrPipe()
+
+	// Prints stderr to console and is picked up by container logging driver.
+	go func() {
+		log.Println("Started logging stderr from function.")
+		for {
+			errBuff := make([]byte, 256)
+
+			_, err := errPipe.Read(errBuff)
+			if err != nil {
+				log.Printf("Error reading stderr: %s", err)
+
+			} else {
+				log.Printf("stderr: %s", errBuff)
+			}
+		}
+	}()
 
 	return cmd.Start()
 }

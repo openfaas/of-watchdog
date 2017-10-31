@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -26,7 +27,7 @@ func (w WatchdogConfig) Process() (string, []string) {
 	return parts[0], []string{}
 }
 
-func New() (WatchdogConfig, error) {
+func New(env []string) (WatchdogConfig, error) {
 	config := WatchdogConfig{
 		TCPPort:          8081,
 		HTTPReadTimeout:  time.Second * 10,
@@ -34,10 +35,29 @@ func New() (WatchdogConfig, error) {
 		FunctionProcess:  os.Getenv("fprocess"),
 		InjectCGIHeaders: true,
 		HardTimeout:      5 * time.Second,
-		OperationalMode:  ModeSerializing,
+		OperationalMode:  ModeAfterBurn,
+	}
+
+	envMap := mapEnv(env)
+	if val := envMap["mode"]; len(val) > 0 {
+		config.OperationalMode = WatchdogModeConst(val)
 	}
 
 	return config, nil
+}
+
+func mapEnv(env []string) map[string]string {
+	mapped := map[string]string{}
+
+	for _, val := range env {
+		parts := strings.Split(val, "=")
+		if len(parts) < 2 {
+			fmt.Println("Bad environment: " + val)
+		}
+		mapped[parts[0]] = parts[1]
+	}
+
+	return mapped
 }
 
 const (
@@ -45,6 +65,19 @@ const (
 	ModeSerializing = 2
 	ModeAfterBurn   = 3
 )
+
+func WatchdogModeConst(mode string) int {
+	switch mode {
+	case "streaming":
+		return ModeStreaming
+	case "afterburn":
+		return ModeAfterBurn
+	case "serializing":
+		return ModeSerializing
+	default:
+		return 0
+	}
+}
 
 func WatchdogMode(mode int) string {
 	switch mode {

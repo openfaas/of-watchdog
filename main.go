@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	watchdogConfig, configErr := config.New()
+	watchdogConfig, configErr := config.New(os.Environ())
 	if configErr != nil {
 		fmt.Fprintf(os.Stderr, configErr.Error())
 		os.Exit(-1)
