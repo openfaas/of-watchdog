@@ -35,7 +35,7 @@ func New(env []string) (WatchdogConfig, error) {
 		FunctionProcess:  os.Getenv("fprocess"),
 		InjectCGIHeaders: true,
 		HardTimeout:      5 * time.Second,
-		OperationalMode:  ModeAfterBurn,
+		OperationalMode:  ModeStreaming,
 	}
 
 	envMap := mapEnv(env)
