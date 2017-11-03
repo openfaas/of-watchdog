@@ -3,6 +3,7 @@ package functions
 import (
 	"bufio"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os/exec"
@@ -61,26 +62,43 @@ func (f *AfterBurnFunctionRunner) Start() error {
 
 // Run a function with a long-running process with a HTTP protocol for communication
 func (f *AfterBurnFunctionRunner) Run(req FunctionRequest, contentLength int64, r *http.Request, w http.ResponseWriter) error {
-	buffReader := bufio.NewReader(f.StdoutPipe)
 
+	// Submit body to function via stdin
 	writeErr := r.Write(f.StdinPipe)
+
 	if writeErr != nil {
 		return writeErr
 	}
 
-	processRes, err := http.ReadResponse(buffReader, r)
-	if err != nil {
-		return err
+	var processRes *http.Response
+
+	// Read response back from stdout
+	buffReader := bufio.NewReader(f.StdoutPipe)
+	var err1 error
+	processRes, err1 = http.ReadResponse(buffReader, r)
+	if err1 != nil {
+		return err1
 	}
 
-	if processRes.Body != nil {
-		defer processRes.Body.Close()
+	for h := range processRes.Header {
+		w.Header().Set(h, processRes.Header.Get(h))
 	}
 
 	w.WriteHeader(processRes.StatusCode)
-	processRes.Write(w)
+	if processRes.Body != nil {
+		defer processRes.Body.Close()
+		bodyBytes, bodyErr := ioutil.ReadAll(processRes.Body)
+		if bodyErr != nil {
+			log.Println("read body err", bodyErr)
+		}
 
-	log.Printf("%s %s - %s - ContentLength: %d\n", r.Method, r.RequestURI, processRes.Status, processRes.ContentLength)
+		// processRes.Write(w)
+		w.Write(bodyBytes)
+	}
+
+	if processRes != nil {
+		log.Printf("%s %s - %s - ContentLength: %d\n", r.Method, r.RequestURI, processRes.Status, processRes.ContentLength)
+	}
 
 	return nil
 }

@@ -27,11 +27,12 @@ func Test_OperationalMode_AfterBurn(t *testing.T) {
 		"mode=afterburn",
 	}
 
-	defaults, err := New(env)
+	actual, err := New(env)
 	if err != nil {
 		t.Errorf("Expected no errors")
 	}
-	if defaults.OperationalMode != ModeStreaming {
-		t.Errorf("Want %s. got: %s", WatchdogMode(ModeStreaming), WatchdogMode(defaults.OperationalMode))
+
+	if actual.OperationalMode != ModeAfterBurn {
+		t.Errorf("Want %s. got: %s", WatchdogMode(ModeAfterBurn), WatchdogMode(actual.OperationalMode))
 	}
 }
