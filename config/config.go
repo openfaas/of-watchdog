@@ -14,28 +14,25 @@ type WatchdogConfig struct {
 	FunctionProcess  string
 	InjectCGIHeaders bool
 	HardTimeout      time.Duration
+	GetStderrTimeout time.Duration
 	OperationalMode  int
 }
 
 func (w WatchdogConfig) Process() (string, []string) {
 	parts := strings.Split(w.FunctionProcess, " ")
-
-	if len(parts) > 1 {
-		return parts[0], parts[1:]
-	}
-
-	return parts[0], []string{}
+	return parts[0], parts[1:]
 }
 
-func New(env []string) (WatchdogConfig, error) {
+func New(env []string) WatchdogConfig {
 	config := WatchdogConfig{
 		TCPPort:          8080,
 		HTTPReadTimeout:  time.Second * 10,
 		HTTPWriteTimeout: time.Second * 10,
 		FunctionProcess:  os.Getenv("fprocess"),
 		InjectCGIHeaders: true,
-		HardTimeout:      5 * time.Second,
-		OperationalMode:  ModeStreaming,
+		HardTimeout:      30 * time.Second, // TODO set from env var
+		GetStderrTimeout: 5 * time.Second,  // TODO set from env var
+		OperationalMode:  ModeFork,
 	}
 
 	envMap := mapEnv(env)
@@ -43,7 +40,7 @@ func New(env []string) (WatchdogConfig, error) {
 		config.OperationalMode = WatchdogModeConst(val)
 	}
 
-	return config, nil
+	return config
 }
 
 func mapEnv(env []string) map[string]string {
@@ -61,33 +58,18 @@ func mapEnv(env []string) map[string]string {
 }
 
 const (
-	ModeStreaming   = 1
+	ModeFork        = 1
 	ModeSerializing = 2
-	ModeAfterBurn   = 3
+	ModeServer      = 3
 )
 
 func WatchdogModeConst(mode string) int {
 	switch mode {
-	case "streaming":
-		return ModeStreaming
-	case "afterburn":
-		return ModeAfterBurn
-	case "serializing":
-		return ModeSerializing
+	case "streaming", "fork":
+		return ModeFork
+	case "afterburn", "server":
+		return ModeServer
 	default:
 		return 0
-	}
-}
-
-func WatchdogMode(mode int) string {
-	switch mode {
-	case ModeStreaming:
-		return "streaming"
-	case ModeAfterBurn:
-		return "afterburn"
-	case ModeSerializing:
-		return "serializing"
-	default:
-		return "unknown"
 	}
 }

@@ -1,4 +1,4 @@
-package functions
+package server
 
 import (
 	"bufio"
@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os/exec"
 	"sync"
+
+	"github.com/openfaas-incubator/of-watchdog/fprocess"
 )
 
 // AfterBurnFunctionRunner creates and maintains one process responsible for handling all calls
@@ -61,7 +63,7 @@ func (f *AfterBurnFunctionRunner) Start() error {
 }
 
 // Run a function with a long-running process with a HTTP protocol for communication
-func (f *AfterBurnFunctionRunner) Run(req FunctionRequest, contentLength int64, r *http.Request, w http.ResponseWriter) error {
+func (f *AfterBurnFunctionRunner) Run(req fprocess.FunctionRequest, contentLength int64, r *http.Request, w http.ResponseWriter) error {
 
 	// Submit body to function via stdin
 	writeErr := r.Write(f.StdinPipe)
