@@ -29,7 +29,7 @@ func (w WatchdogConfig) Process() (string, []string) {
 
 func New(env []string) (WatchdogConfig, error) {
 	config := WatchdogConfig{
-		TCPPort:          8081,
+		TCPPort:          8080,
 		HTTPReadTimeout:  time.Second * 10,
 		HTTPWriteTimeout: time.Second * 10,
 		FunctionProcess:  os.Getenv("fprocess"),
