@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/openfaas-incubator/of-watchdog/config"
@@ -47,8 +49,19 @@ func main() {
 		break
 	}
 
+	if err := lock(); err != nil {
+		log.Panic(err.Error())
+	}
+
 	http.HandleFunc("/", requestHandler)
 	log.Fatal(s.ListenAndServe())
+}
+
+func lock() error {
+	lockFile := filepath.Join(os.TempDir(), ".lock")
+	log.Printf("Writing lock file at: %s", lockFile)
+	return ioutil.WriteFile(lockFile, nil, 0600)
+
 }
 
 func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
