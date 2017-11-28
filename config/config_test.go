@@ -3,10 +3,7 @@ package config
 import "testing"
 
 func TestNew(t *testing.T) {
-	defaults, err := New([]string{})
-	if err != nil {
-		t.Errorf("Expected no errors")
-	}
+	defaults := New([]string{})
 	if defaults.TCPPort != 8080 {
 		t.Errorf("Want TCPPort: 8080, got: %d", defaults.TCPPort)
 	}
@@ -34,10 +31,7 @@ func TestWatchdogConfig_Process(t *testing.T) {
 }
 
 func Test_OperationalMode_Default(t *testing.T) {
-	defaults, err := New([]string{})
-	if err != nil {
-		t.Errorf("Expected no errors")
-	}
+	defaults := New([]string{})
 	if defaults.OperationalMode != ModeFork {
 		t.Errorf("Want %s. got: %s", watchdogMode(ModeFork), watchdogMode(defaults.OperationalMode))
 	}
@@ -48,10 +42,7 @@ func Test_OperationalMode_AfterBurn(t *testing.T) {
 		"mode=afterburn",
 	}
 
-	actual, err := New(env)
-	if err != nil {
-		t.Errorf("Expected no errors")
-	}
+	actual := New(env)
 
 	if actual.OperationalMode != ModeServer {
 		t.Errorf("Want %s. got: %s", watchdogMode(ModeServer), watchdogMode(actual.OperationalMode))
