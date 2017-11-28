@@ -36,7 +36,7 @@ type handler struct {
 	req map[string]*fprocess.FunctionRequest
 }
 
-func (h *handler) Req(reqID string) *fprocess.FunctionRequest {
+func (h *handler) RmReq(reqID string) *fprocess.FunctionRequest {
 	h.Lock()
 	defer h.Unlock()
 	defer delete(h.req, reqID)
@@ -93,6 +93,7 @@ func (h *handler) runWithStderr(w http.ResponseWriter, r *http.Request, req *fpr
 		defer func() {
 			recover() // do not panic! if the channel is closed, discard the error
 		}()
+		h.RmReq(reqID)
 		req.WaitErr <- fmt.Errorf("timed out waiting for stderr request")
 	})
 
@@ -121,7 +122,7 @@ func (h *handler) run(w http.ResponseWriter, r *http.Request, req *fprocess.Func
 }
 
 func (h *handler) getStderrHandler(reqID string) http.HandlerFunc {
-	req := h.Req(reqID)
+	req := h.RmReq(reqID)
 	if req == nil {
 		return http.NotFound
 	}
