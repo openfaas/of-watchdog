@@ -1,10 +1,11 @@
-FROM golang:1.9.1
+FROM golang:1.9.2
 RUN mkdir -p /go/src/github.com/openfaas-incubator/of-watchdog
 WORKDIR /go/src/github.com/openfaas-incubator/of-watchdog
 
 COPY main.go    .
+COPY vendor     vendor
 COPY config     config
-COPY functions  functions
+COPY fprocess   fprocess
 
 # Run a gofmt and exclude all vendored code.
 RUN test -z "$(gofmt -l $(find . -type f -name '*.go' -not -path "./vendor/*"))"
