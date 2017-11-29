@@ -21,7 +21,7 @@ func main() {
 	}
 
 	if len(watchdogConfig.FunctionProcess) == 0 {
-		fmt.Fprintf(os.Stderr, "Provide a fprocess environmental variable for your function.\n")
+		fmt.Fprintf(os.Stderr, "Provide a \"function_process\" or \"fprocess\" environmental variable for your function.\n")
 		os.Exit(-1)
 	}
 
@@ -71,6 +71,7 @@ func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http
 		Process:     commandName,
 		ProcessArgs: arguments,
 	}
+
 	fmt.Printf("Forking - %s %s\n", commandName, arguments)
 	functionInvoker.Start()
 
@@ -119,6 +120,7 @@ func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig) fun
 			Environment:   environment,
 		}
 
+		w.Header().Set("Content-Type", watchdogConfig.ContentType)
 		err := functionInvoker.Run(req, w)
 		if err != nil {
 			log.Println(err)
@@ -148,10 +150,14 @@ func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 			Environment:  environment,
 		}
 
+		w.Header().Set("Content-Type", watchdogConfig.ContentType)
 		err := functionInvoker.Run(req)
 		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte(err.Error()))
+			log.Println(err.Error())
+
+			// Probably cannot write to client if we already have written a header
+			// w.WriteHeader(500)
+			// w.Write([]byte(err.Error()))
 		}
 	}
 }

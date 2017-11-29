@@ -1,7 +1,6 @@
 package functions
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -26,6 +25,7 @@ func (f *SerializingForkFunctionRunner) Run(req FunctionRequest, w http.Response
 	}
 
 	w.WriteHeader(200)
+
 	if functionBytes != nil {
 		_, err = w.Write(*functionBytes)
 	} else {
@@ -44,18 +44,22 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 
 	var timer *time.Timer
 	if f.HardTimeout > time.Millisecond*0 {
+		log.Println("Started a timer.")
+
 		timer = time.NewTimer(f.HardTimeout)
 		go func() {
 			<-timer.C
 
-			fmt.Printf("Function was killed by HardTimeout: %d\n", f.HardTimeout)
+			log.Printf("Function was killed by HardTimeout: %s\n", f.HardTimeout)
 			killErr := cmd.Process.Kill()
 			if killErr != nil {
-				fmt.Println("Error killing function due to HardTimeout", killErr)
+				log.Println("Error killing function due to HardTimeout", killErr)
 			}
 		}()
 	}
-	defer timer.Stop()
+	if timer != nil {
+		defer timer.Stop()
+	}
 
 	var data []byte
 

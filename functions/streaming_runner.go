@@ -39,6 +39,7 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 	var timer *time.Timer
 	if f.HardTimeout > time.Millisecond*0 {
 		timer = time.NewTimer(f.HardTimeout)
+
 		go func() {
 			<-timer.C
 
@@ -88,12 +89,15 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 	waitErr := cmd.Wait()
 	done := time.Since(start)
 	log.Printf("Took %f secs", done.Seconds())
-	timer.Stop()
+	if timer != nil {
+		timer.Stop()
+	}
 
 	req.InputReader.Close()
 
 	if waitErr != nil {
 		return waitErr
 	}
+
 	return nil
 }
