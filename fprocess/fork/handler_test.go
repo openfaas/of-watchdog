@@ -130,19 +130,22 @@ func TestHandler_HandleRun_e2e(t *testing.T) {
 		}
 	}()
 
-	stdoutServer := httptest.NewServer(http.HandlerFunc(handler.HandleRun))
-	defer stdoutServer.Close()
+	http.HandleFunc("/", handler.HandleRun)
+	http.HandleFunc("/stderr/", handler.HandleStderr)
 
-	stdoutClient := &http.Client{}
+	server := httptest.NewServer(http.DefaultServeMux)
+	defer server.Close()
+
+	client := server.Client()
 
 	// stdout request
-	req, err := http.NewRequest("POST", stdoutServer.URL, orR)
+	req, err := http.NewRequest("POST", server.URL, orR)
 	require.NoError(t, err)
 	req.ContentLength = -1
 	req.Header.Set("X-Expect", "Link-stderr")
 
 	// stdout response
-	res, err := stdoutClient.Do(req)
+	res, err := client.Do(req)
 	require.NoError(t, err)
 	require.Equal(t, 200, res.StatusCode)
 
@@ -157,13 +160,8 @@ func TestHandler_HandleRun_e2e(t *testing.T) {
 	assert.Empty(t, res.Header.Get("Expires"))
 	assert.Empty(t, res.Header.Get("X-Error"))
 
-	stderrServer := httptest.NewServer(http.HandlerFunc(handler.HandleStderr))
-	defer stderrServer.Close()
-
-	stderrClient := &http.Client{}
-
 	// stderr response
-	stderrRes, err := stderrClient.Get(fmt.Sprintf("%s/stderr/%s", stderrServer.URL, reqID))
+	stderrRes, err := client.Get(fmt.Sprintf("%s/stderr/%s", server.URL, reqID))
 	require.NoError(t, err)
 	require.Equal(t, 200, stderrRes.StatusCode)
 
