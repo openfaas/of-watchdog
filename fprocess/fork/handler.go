@@ -2,6 +2,7 @@ package fork
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -64,16 +65,34 @@ func (h *handler) HandleRun(w http.ResponseWriter, r *http.Request) {
 	er, ew := io.Pipe()
 	defer ew.Close()
 
+	wg := sync.WaitGroup{} // TODO remove
+	defer wg.Wait()
+
+	debugR, debugW := io.Pipe() // TODO remove
+	defer debugW.Close()
+
+	wg.Add(1)
+	go func() { // TODO remove
+		defer wg.Done()
+		scanner := bufio.NewScanner(debugR)
+		for scanner.Scan() {
+			log.Printf("req body: %s", scanner.Text())
+		}
+	}()
+
+	b := &bytes.Buffer{}
+	io.Copy(b, r.Body)
+
 	req := &fprocess.FunctionRequest{
 		Cmd:          cmd,
-		InputReader:  r.Body,
+		InputReader:  io.TeeReader(b, debugW), // TODO possibly replace with r.Body: if HTTP2 doesn't close it on w.Flush()
 		OutputWriter: w,
 		ErrorWriter:  ew,
 		ErrorReader:  er,
 		WaitErr:      make(chan error),
 	}
 
-	if r.Header.Get("Expect") == "Link-stderr" {
+	if r.Header.Get("X-Expect") == "Link-stderr" {
 		h.runWithStderr(w, r, req)
 	} else {
 		h.run(w, r, req)
@@ -87,7 +106,7 @@ func (h *handler) runWithStderr(w http.ResponseWriter, r *http.Request, req *fpr
 	w.Header().Add("Link", fmt.Sprintf("</stderr/%s>; rel=\"stderr\"", reqID))
 	w.Header().Add("Trailer", "Expires")
 	w.Header().Add("Trailer", "X-Error")
-	w.(http.Flusher).Flush() // otherwise panic :)
+	w.(http.Flusher).Flush() // otherwise panic :) // FIXME prematurely closes r.Body, see if HTTP2 solves it
 
 	time.AfterFunc(h.config.GetStderrTimeout, func() {
 		defer func() {
@@ -98,6 +117,7 @@ func (h *handler) runWithStderr(w http.ResponseWriter, r *http.Request, req *fpr
 	})
 
 	if err := h.functionInvoker.Run(req); err != nil {
+		log.Printf("error running function process: %s", err)
 		io.WriteString(w, "\n")
 		w.Header().Set("Expires", "0")
 		w.Header().Set("X-Error", err.Error())
@@ -114,8 +134,7 @@ func (h *handler) run(w http.ResponseWriter, r *http.Request, req *fprocess.Func
 
 	close(req.WaitErr) // unblock run
 
-	err := h.functionInvoker.Run(req)
-	if err != nil {
+	if err := h.functionInvoker.Run(req); err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
 	}

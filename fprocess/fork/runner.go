@@ -1,7 +1,6 @@
 package fork
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -15,8 +14,6 @@ type ForkFunctionRunner struct {
 
 // Run run a fork for each invocation
 func (f *ForkFunctionRunner) Run(req *fprocess.FunctionRequest) error {
-	log.Printf("Running %s", req.Cmd.Args[0])
-
 	req.Cmd.Stdin = req.InputReader
 	req.Cmd.Stdout = req.OutputWriter
 	req.Cmd.Stderr = req.ErrorWriter
@@ -24,6 +21,8 @@ func (f *ForkFunctionRunner) Run(req *fprocess.FunctionRequest) error {
 	if err := <-req.WaitErr; err != nil {
 		return err
 	}
+
+	log.Printf("Running %v", req.Cmd.Args)
 
 	start := time.Now()
 	defer func() {
@@ -36,10 +35,9 @@ func (f *ForkFunctionRunner) Run(req *fprocess.FunctionRequest) error {
 
 	if f.HardTimeout > 0 {
 		timer := time.AfterFunc(f.HardTimeout, func() {
-			fmt.Printf("Function was killed by HardTimeout: %d\n", f.HardTimeout)
-			killErr := req.Cmd.Process.Kill()
-			if killErr != nil {
-				fmt.Println("Error killing function due to HardTimeout", killErr)
+			log.Printf("Function was killed by HardTimeout: %d\n", f.HardTimeout)
+			if err := req.Cmd.Process.Kill(); err != nil {
+				log.Println("Error killing function due to HardTimeout", err)
 			}
 		})
 		defer timer.Stop()

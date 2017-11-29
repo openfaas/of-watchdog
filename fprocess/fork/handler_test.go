@@ -60,15 +60,15 @@ func TestHandler_HandleRun_expectStderr(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer orW.Close()
 		for i := 0; i < 10; i++ {
 			fmt.Fprintf(orW, "in %v\n", i)
 		}
-		orW.Close()
 	}()
 
 	// stdout request
 	or := httptest.NewRequest("POST", "/", orR)
-	or.Header.Set("Expect", "Link-stderr")
+	or.Header.Set("X-Expect", "Link-stderr")
 
 	// stdout response
 	ow := newTestResponse()
@@ -107,4 +107,89 @@ func TestHandler_HandleRun_expectStderr(t *testing.T) {
 	assert.NotEmpty(t, ow.Body.Bytes())
 	assert.NotEmpty(t, ew.Body.Bytes())
 	assert.Equal(t, ow.Body.Bytes(), ew.Body.Bytes())
+}
+
+func TestHandler_HandleRun_e2e(t *testing.T) {
+	os.Setenv("mode", "fork")
+	os.Setenv("fprocess", "tee /dev/stderr")
+	conf := config.New(os.Environ())
+
+	handler := New(conf)
+
+	wgEndOfInput := sync.WaitGroup{}
+	defer wgEndOfInput.Wait()
+
+	orR, orW := io.Pipe()
+	wgEndOfInput.Add(1)
+	go func() {
+		defer wgEndOfInput.Done()
+		defer orW.Close()
+		for i := 0; i < 10; i++ {
+			_, err := fmt.Fprintf(orW, "in %v\n", i)
+			require.NoError(t, err)
+		}
+	}()
+
+	stdoutServer := httptest.NewServer(http.HandlerFunc(handler.HandleRun))
+	defer stdoutServer.Close()
+
+	stdoutClient := &http.Client{}
+
+	// stdout request
+	req, err := http.NewRequest("POST", stdoutServer.URL, orR)
+	require.NoError(t, err)
+	req.ContentLength = -1
+	req.Header.Set("X-Expect", "Link-stderr")
+
+	// stdout response
+	res, err := stdoutClient.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, 200, res.StatusCode)
+
+	linkHeader := res.Header.Get("Link")
+	require.Contains(t, linkHeader, `</stderr/`)
+	require.Contains(t, linkHeader, `>; rel="stderr"`)
+	reqID := strings.TrimPrefix(linkHeader, `</stderr/`)
+	reqID = strings.TrimSuffix(reqID, `>; rel="stderr"`)
+	reqID = strings.TrimSpace(reqID)
+	require.NotEmpty(t, reqID)
+
+	assert.Empty(t, res.Header.Get("Expires"))
+	assert.Empty(t, res.Header.Get("X-Error"))
+
+	stderrServer := httptest.NewServer(http.HandlerFunc(handler.HandleStderr))
+	defer stderrServer.Close()
+
+	stderrClient := &http.Client{}
+
+	// stderr response
+	stderrRes, err := stderrClient.Get(fmt.Sprintf("%s/stderr/%s", stderrServer.URL, reqID))
+	require.NoError(t, err)
+	require.Equal(t, 200, stderrRes.StatusCode)
+
+	assert.NotNil(t, res.Body)
+	assert.NotNil(t, stderrRes.Body)
+
+	wg := sync.WaitGroup{}
+	defer wg.Wait()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(res.Body)
+		for scanner.Scan() {
+			s := scanner.Text()
+			t.Logf("stdout: %s\n", s)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stderrRes.Body)
+		for scanner.Scan() {
+			s := scanner.Text()
+			t.Logf("stderr: %s\n", s)
+		}
+	}()
 }

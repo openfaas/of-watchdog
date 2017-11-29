@@ -15,7 +15,7 @@ type Handler interface {
 type FunctionRequest struct {
 	Cmd *exec.Cmd
 
-	InputReader   io.ReadCloser
+	InputReader   io.Reader
 	OutputWriter  io.Writer
 	ErrorWriter   io.Writer
 	ErrorReader   io.Reader
