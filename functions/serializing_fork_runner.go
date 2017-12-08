@@ -5,7 +5,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 )
@@ -141,5 +143,12 @@ func pipeToProcess(stdin io.WriteCloser, stdout io.Reader, data *[]byte) (*[]byt
 
 	wg.Wait()
 
+	if val, exists := os.LookupEnv("cgi_body"); exists && val == "1" || val == "true" {
+		buffer := string(*functionResult)
+
+		searchString := "\n\r"
+		fres := []byte(buffer[strings.Index(buffer, searchString)+len(searchString)+1:])
+		functionResult = &fres
+	}
 	return functionResult, errors
 }
