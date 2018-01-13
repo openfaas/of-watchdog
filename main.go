@@ -5,10 +5,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/openfaas-incubator/of-watchdog/config"
 	"github.com/openfaas-incubator/of-watchdog/functions"
+	"github.com/openfaas-incubator/of-watchdog/utilities"
+
+	// For generating unique names for the pipes
+	"github.com/satori/go.uuid"
 )
 
 func main() {
@@ -126,12 +131,18 @@ func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 			environment = getEnvironment(r)
 		}
 
+		u, _ := uuid.NewV4()
+		pipeName := filepath.Join(watchdogConfig.TempDirectory, u.String())
+		utilities.CreatePipeIfNotExists(pipeName)
+		environment = append(environment, fmt.Sprintf("CONTROL_PIPE=%s", pipeName))
+		sw := utilities.NewShim(w, pipeName)
+
 		commandName, arguments := watchdogConfig.Process()
 		req := functions.FunctionRequest{
 			Process:      commandName,
 			ProcessArgs:  arguments,
 			InputReader:  r.Body,
-			OutputWriter: w,
+			OutputWriter: sw,
 			Environment:  environment,
 		}
 
@@ -140,6 +151,7 @@ func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 			w.WriteHeader(500)
 			w.Write([]byte(err.Error()))
 		}
+		os.Remove(pipeName)
 	}
 }
 

@@ -17,3 +17,8 @@ of-watchdog
 nodejs-afterburn
 faster
 of-watchdog*
+
+# Common tempprary files
+\#*
+*~
+*.swp
