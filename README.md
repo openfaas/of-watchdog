@@ -11,9 +11,22 @@ Watchdog modes:
 
 Forks a process per request and can deal with more data than is available memory capacity - i.e. 512mb VM can process multiple GB of video.
 
-HTTP headers cannot be sent after function starts executing due to input/output being hooked-up directly to response for streaming efficiencies. Response code is always 200 unless there is an issue forking the process. An error mid-flight will have to be picked up on the client. Multi-threaded.
+HTTP headers and response code can be set by writing JSON to the file
+specified in the `CONTROL_PIPE` environment variable. This data must be
+sent before anything is written to stdout by the called process. This
+can be used to send any headers or any response code. The format for the
+json is as follows:
 
-A static Content-type can be set ahead of time.
+```
+{
+  "status": 200,
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}
+```
+
+This runs multi-threaded.
 
 Hard timeout: supported.
 

@@ -2,9 +2,13 @@ FROM golang:1.9.1
 RUN mkdir -p /go/src/github.com/openfaas-incubator/of-watchdog
 WORKDIR /go/src/github.com/openfaas-incubator/of-watchdog
 
+# Get dependencies
+RUN go get github.com/satori/go.uuid
+
 COPY main.go    .
 COPY config     config
 COPY functions  functions
+COPY utilities  utilities
 
 # Run a gofmt and exclude all vendored code.
 RUN test -z "$(gofmt -l $(find . -type f -name '*.go' -not -path "./vendor/*"))"

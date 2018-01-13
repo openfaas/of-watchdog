@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ type WatchdogConfig struct {
 	InjectCGIHeaders bool
 	HardTimeout      time.Duration
 	OperationalMode  int
+	TempDirectory    string
 }
 
 func (w WatchdogConfig) Process() (string, []string) {
@@ -36,11 +38,19 @@ func New(env []string) (WatchdogConfig, error) {
 		InjectCGIHeaders: true,
 		HardTimeout:      5 * time.Second,
 		OperationalMode:  ModeStreaming,
+		TempDirectory:    os.TempDir(),
 	}
 
 	envMap := mapEnv(env)
 	if val := envMap["mode"]; len(val) > 0 {
 		config.OperationalMode = WatchdogModeConst(val)
+	}
+
+	// Try to make a subdir, otherwise use the global tmpdir
+	dir, err := ioutil.TempDir(os.TempDir(), "")
+	fmt.Println(err)
+	if err == nil {
+		config.TempDirectory = dir
 	}
 
 	return config, nil
