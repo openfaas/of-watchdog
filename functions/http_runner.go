@@ -94,6 +94,9 @@ func (f *HTTPFunctionRunner) Start() error {
 func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *http.Request, w http.ResponseWriter) error {
 
 	request, _ := http.NewRequest(r.Method, f.UpstreamURL.String(), r.Body)
+	for h := range r.Header {
+		request.Header.Set(h, r.Header.Get(h))
+	}
 
 	res, err := f.Client.Do(request)
 
