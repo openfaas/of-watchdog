@@ -9,6 +9,9 @@ const (
 
 	// ModeAfterBurn for performance tuning
 	ModeAfterBurn = 3
+
+	//ModeHTTP for routing requests over HTTP
+	ModeHTTP = 4
 )
 
 // WatchdogModeConst as a const int
@@ -20,6 +23,8 @@ func WatchdogModeConst(mode string) int {
 		return ModeAfterBurn
 	case "serializing":
 		return ModeSerializing
+	case "http":
+		return ModeHTTP
 	default:
 		return 0
 	}
@@ -34,6 +39,8 @@ func WatchdogMode(mode int) string {
 		return "afterburn"
 	case ModeSerializing:
 		return "serializing"
+	case ModeHTTP:
+		return "http"
 	default:
 		return "unknown"
 	}

@@ -10,32 +10,13 @@ This is a re-write of the OpenFaaS watchdog.
 
 ![](https://camo.githubusercontent.com/61c169ab5cd01346bc3dc7a11edc1d218f0be3b4/68747470733a2f2f7062732e7477696d672e636f6d2f6d656469612f4447536344626c554941416f34482d2e6a70673a6c61726765)
 
-## Config
-
-Environmental variables:
-
-| Option                 | Implemented | Usage             |
-|------------------------|--------------|-------------------------------|
-| `function_process`     | Yes          | The process to invoke for each function call function process (alias - fprocess). This must be a UNIX binary and accept input via STDIN and output via STDOUT.  |
-| `read_timeout`         | Yes          | HTTP timeout for reading the payload from the client caller (in seconds) |
-| `write_timeout`        | Yes          | HTTP timeout for writing a response body from your function (in seconds)  |
-| `hard_timeout`         | Yes          | Hard timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0. |
-| `port`                 | Yes          | Specify an alternative TCP port fo testing |
-| `write_debug`          | No           | Write all output, error messages, and additional information to the logs. Default is false. |
-| `content_type`         | No           | Force a specific Content-Type response for all responses. |
-| `suppress_lock`        | No           | The watchdog will attempt to write a lockfile to /tmp/ for swarm healthchecks - set this to true to disable behaviour. |
-
-> Note: the .lock file is implemented for health-checking, but cannot be disabled yet.
-
 ## Watchdog modes:
 
-The original watchdog supported mode 3 Serializing fork and has support for mode 2 Afterburn in an open PR.
+History/context: the original watchdog supported mode the Serializing fork mode only and Afterburn was available for testing via a pull request.
 
-When complete this work will support all three modes and additional stretch goal of:
+When the of-watchdog is complete this version will support four modes as listed below. We may consolidate or remove some of these modes before going to 1.0 so please consider modes 2-4 experimental.
 
-* Handling of multi-part forms
-
-### 1. Streaming fork (implemented) - default.
+### 1. Streaming fork (mode=streaming) - default.
 
 Forks a process per request and can deal with more data than is available memory capacity - i.e. 512mb VM can process multiple GB of video.
 
@@ -47,7 +28,7 @@ HTTP headers cannot be sent after function starts executing due to input/output 
 
 * Hard timeout: supported.
 
-### 2. Afterburn (implemented)
+### 2. Afterburn (mode=afterburn)
 
 Uses a single process for all requests, if that request dies the container dies.
 
@@ -69,7 +50,41 @@ https://github.com/alexellis/python-afterburn
 
 https://github.com/alexellis/java-afterburn
 
-### 3. Serializing fork (implemented in dev-branch)
+### 3. HTTP (mode=http)
+
+The HTTP mode is similar to AfterBurn.
+
+A process is forked when the watchdog starts, we then forward any request incoming to the watchdog to a HTTP port within the container.
+
+Pros:
+
+* Fastest option - high concurrency and throughput
+
+* Does not require new/custom client libraries like afterburn but makes use of a long-running daemon such as Express.js for Node or Flask for Python
+
+Example usage for testing:
+
+* Forward to an NGinx container:
+
+```
+$ go build ; mode=http port=8081 fprocess="docker run -p 80:80 --name nginx -t nginx" upstream_url=http://127.0.0.1:80 ./of-watchdog
+```
+
+* Forward to a Node.js / Express.js hello-world app:
+
+```
+$ go build ; mode=http port=8081 fprocess="node expressjs-hello-world.js" upstream_url=http://127.0.0.1:3000 ./of-watchdog
+```
+
+Cons:
+
+* Questionable as to whether this is actually "serverless"
+
+* Daemons such as express/flask/sinatra could be hard to configure or potentially unpredictable when used in this way
+
+* One more HTTP hop in the chain between the client and the function
+
+### 4. Serializing fork (mode=serializing)
 
 Forks one process per request. Multi-threaded. Ideal for retro-fitting a CGI application handler i.e. for Flask.
 
@@ -85,3 +100,20 @@ Reads entire request into memory from the HTTP request. At this point we seriali
 
 * Hard timeout: supported.
 
+## Configuration
+
+Environmental variables:
+
+| Option                 | Implemented | Usage             |
+|------------------------|--------------|-------------------------------|
+| `function_process`     | Yes          | The process to invoke for each function call function process (alias - fprocess). This must be a UNIX binary and accept input via STDIN and output via STDOUT.  |
+| `read_timeout`         | Yes          | HTTP timeout for reading the payload from the client caller (in seconds) |
+| `write_timeout`        | Yes          | HTTP timeout for writing a response body from your function (in seconds)  |
+| `hard_timeout`         | Yes          | Hard timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0. |
+| `port`                 | Yes          | Specify an alternative TCP port fo testing |
+| `write_debug`          | No           | Write all output, error messages, and additional information to the logs. Default is false. |
+| `content_type`         | Yes          | Force a specific Content-Type response for all responses - only in forking/serializing modes. |
+| `suppress_lock`        | No           | The watchdog will attempt to write a lockfile to /tmp/ for swarm healthchecks - set this to true to disable behaviour. |
+| `upstream_url`         | Yes          | `http` mode only - where to forward requests i.e. 127.0.0.1:5000 |
+
+> Note: the .lock file is implemented for health-checking, but cannot be disabled yet. You must create this file in /tmp/.

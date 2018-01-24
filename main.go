@@ -32,22 +32,9 @@ func main() {
 		MaxHeaderBytes: 1 << 20, // Max header of 1MB
 	}
 
-	var requestHandler http.HandlerFunc
+	requestHandler := buildRequestHandler(watchdogConfig)
 
-	switch watchdogConfig.OperationalMode {
-	case config.ModeStreaming:
-		log.Println("OperationalMode: Streaming")
-		requestHandler = makeForkRequestHandler(watchdogConfig)
-		break
-	case config.ModeSerializing:
-		log.Println("OperationalMode: Serializing")
-		requestHandler = makeSerializingForkRequestHandler(watchdogConfig)
-		break
-	case config.ModeAfterBurn:
-		log.Println("OperationalMode: AfterBurn")
-		requestHandler = makeAfterBurnRequestHandler(watchdogConfig)
-		break
-	}
+	log.Printf("OperationalMode: %s\n", config.WatchdogMode(watchdogConfig.OperationalMode))
 
 	if err := lock(); err != nil {
 		log.Panic(err.Error())
@@ -55,6 +42,30 @@ func main() {
 
 	http.HandleFunc("/", requestHandler)
 	log.Fatal(s.ListenAndServe())
+}
+
+func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.HandlerFunc {
+	var requestHandler http.HandlerFunc
+
+	switch watchdogConfig.OperationalMode {
+	case config.ModeStreaming:
+		requestHandler = makeForkRequestHandler(watchdogConfig)
+		break
+	case config.ModeSerializing:
+		requestHandler = makeSerializingForkRequestHandler(watchdogConfig)
+		break
+	case config.ModeAfterBurn:
+		requestHandler = makeAfterBurnRequestHandler(watchdogConfig)
+		break
+	case config.ModeHTTP:
+		requestHandler = makeHTTPRequestHandler(watchdogConfig)
+		break
+	default:
+		log.Panicf("unknown watchdog mode: %d", watchdogConfig.OperationalMode)
+		break
+	}
+
+	return requestHandler
 }
 
 func lock() error {
@@ -181,4 +192,33 @@ func getEnvironment(r *http.Request) []string {
 	}
 
 	return envs
+}
+
+func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
+	commandName, arguments := watchdogConfig.Process()
+	functionInvoker := functions.HTTPFunctionRunner{
+		Process:     commandName,
+		ProcessArgs: arguments,
+	}
+
+	fmt.Printf("Forking - %s %s\n", commandName, arguments)
+	functionInvoker.Start()
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		req := functions.FunctionRequest{
+			Process:      commandName,
+			ProcessArgs:  arguments,
+			InputReader:  r.Body,
+			OutputWriter: w,
+		}
+
+		err := functionInvoker.Run(req, r.ContentLength, r, w)
+
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+		}
+
+	}
 }
