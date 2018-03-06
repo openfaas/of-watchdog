@@ -26,7 +26,7 @@ type FunctionRequest struct {
 
 // ForkFunctionRunner forks a process for each invocation
 type ForkFunctionRunner struct {
-	HardTimeout time.Duration
+	ExecTimeout time.Duration
 }
 
 // Run run a fork for each invocation
@@ -37,16 +37,16 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 	cmd.Env = req.Environment
 
 	var timer *time.Timer
-	if f.HardTimeout > time.Millisecond*0 {
-		timer = time.NewTimer(f.HardTimeout)
+	if f.ExecTimeout > time.Millisecond*0 {
+		timer = time.NewTimer(f.ExecTimeout)
 
 		go func() {
 			<-timer.C
 
-			fmt.Printf("Function was killed by HardTimeout: %d\n", f.HardTimeout)
+			fmt.Printf("Function was killed by ExecTimeout: %d\n", f.ExecTimeout)
 			killErr := cmd.Process.Kill()
 			if killErr != nil {
-				fmt.Println("Error killing function due to HardTimeout", killErr)
+				fmt.Println("Error killing function due to ExecTimeout", killErr)
 			}
 		}()
 	}

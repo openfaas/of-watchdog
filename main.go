@@ -110,7 +110,7 @@ func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http
 
 func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
 	functionInvoker := functions.SerializingForkFunctionRunner{
-		HardTimeout: watchdogConfig.HardTimeout,
+		ExecTimeout: watchdogConfig.ExecTimeout,
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -141,7 +141,7 @@ func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig) fun
 
 func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
 	functionInvoker := functions.ForkFunctionRunner{
-		HardTimeout: watchdogConfig.HardTimeout,
+		ExecTimeout: watchdogConfig.ExecTimeout,
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {

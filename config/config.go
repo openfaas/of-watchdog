@@ -12,7 +12,7 @@ type WatchdogConfig struct {
 	TCPPort          int
 	HTTPReadTimeout  time.Duration
 	HTTPWriteTimeout time.Duration
-	HardTimeout      time.Duration
+	ExecTimeout      time.Duration
 
 	FunctionProcess  string
 	ContentType      string
@@ -56,7 +56,7 @@ func New(env []string) (WatchdogConfig, error) {
 		HTTPWriteTimeout: getDuration(envMap, "write_timeout", time.Second*10),
 		FunctionProcess:  functionProcess,
 		InjectCGIHeaders: true,
-		HardTimeout:      getDuration(envMap, "hard_timeout", time.Second*10),
+		ExecTimeout:      getDuration(envMap, "exec_timeout", time.Second*10),
 		OperationalMode:  ModeStreaming,
 		ContentType:      contentType,
 	}

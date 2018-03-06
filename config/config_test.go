@@ -116,7 +116,7 @@ func Test_Timeouts(t *testing.T) {
 	cases := []struct {
 		readTimeout  time.Duration
 		writeTimeout time.Duration
-		hardTimeout  time.Duration
+		execTimeout  time.Duration
 		env          []string
 		name         string
 	}{
@@ -124,29 +124,29 @@ func Test_Timeouts(t *testing.T) {
 			name:         "Defaults",
 			readTimeout:  time.Second * 10,
 			writeTimeout: time.Second * 10,
-			hardTimeout:  time.Second * 10,
+			execTimeout:  time.Second * 10,
 			env:          []string{},
 		},
 		{
 			name:         "Custom read-timeout",
 			readTimeout:  time.Second * 5,
 			writeTimeout: time.Second * 10,
-			hardTimeout:  time.Second * 10,
+			execTimeout:  time.Second * 10,
 			env:          []string{"read_timeout=5s"},
 		},
 		{
 			name:         "Custom write-timeout",
 			readTimeout:  time.Second * 10,
 			writeTimeout: time.Second * 5,
-			hardTimeout:  time.Second * 10,
+			execTimeout:  time.Second * 10,
 			env:          []string{"write_timeout=5s"},
 		},
 		{
-			name:         "Custom hard-timeout",
+			name:         "Custom exec-timeout",
 			readTimeout:  time.Second * 10,
 			writeTimeout: time.Second * 10,
-			hardTimeout:  time.Second * 5,
-			env:          []string{"hard_timeout=5s"},
+			execTimeout:  time.Second * 5,
+			env:          []string{"exec_timeout=5s"},
 		},
 	}
 
@@ -161,8 +161,8 @@ func Test_Timeouts(t *testing.T) {
 		if testCase.writeTimeout != actual.HTTPWriteTimeout {
 			t.Errorf("(%s) HTTPWriteTimeout want: %s, got: %s", testCase.name, actual.HTTPWriteTimeout, testCase.writeTimeout)
 		}
-		if testCase.hardTimeout != actual.HardTimeout {
-			t.Errorf("(%s) HardTimeout want: %s, got: %s", testCase.name, actual.HardTimeout, testCase.hardTimeout)
+		if testCase.execTimeout != actual.ExecTimeout {
+			t.Errorf("(%s) ExecTimeout want: %s, got: %s", testCase.name, actual.ExecTimeout, testCase.execTimeout)
 		}
 
 	}
