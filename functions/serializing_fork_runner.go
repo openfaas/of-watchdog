@@ -12,7 +12,7 @@ import (
 
 // SerializingForkFunctionRunner forks a process for each invocation
 type SerializingForkFunctionRunner struct {
-	HardTimeout time.Duration
+	ExecTimeout time.Duration
 }
 
 // Run run a fork for each invocation
@@ -43,17 +43,17 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 	cmd.Env = req.Environment
 
 	var timer *time.Timer
-	if f.HardTimeout > time.Millisecond*0 {
+	if f.ExecTimeout > time.Millisecond*0 {
 		log.Println("Started a timer.")
 
-		timer = time.NewTimer(f.HardTimeout)
+		timer = time.NewTimer(f.ExecTimeout)
 		go func() {
 			<-timer.C
 
-			log.Printf("Function was killed by HardTimeout: %s\n", f.HardTimeout)
+			log.Printf("Function was killed by ExecTimeout: %s\n", f.ExecTimeout)
 			killErr := cmd.Process.Kill()
 			if killErr != nil {
-				log.Println("Error killing function due to HardTimeout", killErr)
+				log.Println("Error killing function due to ExecTimeout", killErr)
 			}
 		}()
 	}

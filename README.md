@@ -26,7 +26,7 @@ HTTP headers cannot be sent after function starts executing due to input/output 
 
 * A static Content-type can be set ahead of time.
 
-* Hard timeout: supported.
+* Exec timeout: supported.
 
 ### 2. Afterburn (mode=afterburn)
 
@@ -40,7 +40,7 @@ Vastly accelerated processing speed but requires a client library for each langu
 
 * A dynamic Content-type can be set from the client library.
 
-* Hard timeout: not supported.
+* Exec timeout: not supported.
 
 Example client libraries:
 
@@ -98,7 +98,7 @@ Reads entire request into memory from the HTTP request. At this point we seriali
 
 * A static Content-type can be set ahead of time.
 
-* Hard timeout: supported.
+* Exec timeout: supported.
 
 ## Configuration
 
@@ -109,7 +109,7 @@ Environmental variables:
 | `function_process`     | Yes          | The process to invoke for each function call function process (alias - fprocess). This must be a UNIX binary and accept input via STDIN and output via STDOUT.  |
 | `read_timeout`         | Yes          | HTTP timeout for reading the payload from the client caller (in seconds) |
 | `write_timeout`        | Yes          | HTTP timeout for writing a response body from your function (in seconds)  |
-| `hard_timeout`         | Yes          | Hard timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0. |
+| `exec_timeout`         | Yes          | Exec timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0. |
 | `port`                 | Yes          | Specify an alternative TCP port fo testing |
 | `write_debug`          | No           | Write all output, error messages, and additional information to the logs. Default is false. |
 | `content_type`         | Yes          | Force a specific Content-Type response for all responses - only in forking/serializing modes. |
