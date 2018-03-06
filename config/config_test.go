@@ -108,7 +108,7 @@ func Test_PortOverride(t *testing.T) {
 	}
 
 	if actual.TCPPort != 8081 {
-		t.Errorf("Want %s. got: %s", 8081, actual.TCPPort)
+		t.Errorf("Want %d. got: %d", 8081, actual.TCPPort)
 	}
 }
 
