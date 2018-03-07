@@ -197,6 +197,7 @@ func getEnvironment(r *http.Request) []string {
 func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
 	commandName, arguments := watchdogConfig.Process()
 	functionInvoker := executor.HTTPFunctionRunner{
+		ExecTimeout: watchdogConfig.ExecTimeout,
 		Process:     commandName,
 		ProcessArgs: arguments,
 	}
