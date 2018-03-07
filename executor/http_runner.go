@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,15 +16,18 @@ import (
 
 // HTTPFunctionRunner creates and maintains one process responsible for handling all calls
 type HTTPFunctionRunner struct {
-	Process     string
-	ProcessArgs []string
-	Command     *exec.Cmd
-	StdinPipe   io.WriteCloser
-	StdoutPipe  io.ReadCloser
-	Stderr      io.Writer
-	Mutex       sync.Mutex
-	Client      *http.Client
-	UpstreamURL *url.URL
+	ExecTimeout  time.Duration // ExecTimeout the maxmium duration or an upstream function call
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	Process      string
+	ProcessArgs  []string
+	Command      *exec.Cmd
+	StdinPipe    io.WriteCloser
+	StdoutPipe   io.ReadCloser
+	Stderr       io.Writer
+	Mutex        sync.Mutex
+	Client       *http.Client
+	UpstreamURL  *url.URL
 }
 
 // Start forks the process used for processing incoming requests
@@ -77,8 +81,7 @@ func (f *HTTPFunctionRunner) Start() error {
 		}
 	}()
 
-	dialTimeout := 3 * time.Second
-	f.Client = makeProxyClient(dialTimeout)
+	f.Client = makeProxyClient(f.ExecTimeout)
 
 	urlValue, upstreamURLErr := url.Parse(os.Getenv("upstream_url"))
 	if upstreamURLErr != nil {
@@ -97,11 +100,37 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	for h := range r.Header {
 		request.Header.Set(h, r.Header.Get(h))
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), f.ExecTimeout)
+	defer cancel()
 
-	res, err := f.Client.Do(request)
+	res, err := f.Client.Do(request.WithContext(ctx))
 
 	if err != nil {
-		log.Println(err)
+		log.Printf("Upstream HTTP request error: %s\n", err.Error())
+
+		// Error unrelated to context / deadline
+		if ctx.Err() == nil {
+			w.WriteHeader(http.StatusInternalServerError)
+
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			{
+				if ctx.Err() != nil {
+					// Error due to timeout / deadline
+					log.Printf("Upstream HTTP killed due to exec_timeout: %s\n", f.ExecTimeout)
+
+					w.WriteHeader(http.StatusGatewayTimeout)
+					return nil
+				}
+
+			}
+		}
+
+		w.WriteHeader(http.StatusInternalServerError)
+		return err
 	}
 
 	for h := range res.Header {
