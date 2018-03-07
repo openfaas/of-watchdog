@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/openfaas-incubator/of-watchdog/config"
-	"github.com/openfaas-incubator/of-watchdog/functions"
+	"github.com/openfaas-incubator/of-watchdog/executor"
 )
 
 func main() {
@@ -78,7 +78,7 @@ func lock() error {
 func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
 
 	commandName, arguments := watchdogConfig.Process()
-	functionInvoker := functions.AfterBurnFunctionRunner{
+	functionInvoker := executor.AfterBurnFunctionRunner{
 		Process:     commandName,
 		ProcessArgs: arguments,
 	}
@@ -88,7 +88,7 @@ func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		req := functions.FunctionRequest{
+		req := executor.FunctionRequest{
 			Process:      commandName,
 			ProcessArgs:  arguments,
 			InputReader:  r.Body,
@@ -109,7 +109,7 @@ func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http
 }
 
 func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
-	functionInvoker := functions.SerializingForkFunctionRunner{
+	functionInvoker := executor.SerializingForkFunctionRunner{
 		ExecTimeout: watchdogConfig.ExecTimeout,
 	}
 
@@ -122,7 +122,7 @@ func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig) fun
 		}
 
 		commandName, arguments := watchdogConfig.Process()
-		req := functions.FunctionRequest{
+		req := executor.FunctionRequest{
 			Process:       commandName,
 			ProcessArgs:   arguments,
 			InputReader:   r.Body,
@@ -140,7 +140,7 @@ func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig) fun
 }
 
 func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
-	functionInvoker := functions.ForkFunctionRunner{
+	functionInvoker := executor.ForkFunctionRunner{
 		ExecTimeout: watchdogConfig.ExecTimeout,
 	}
 
@@ -153,7 +153,7 @@ func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 		}
 
 		commandName, arguments := watchdogConfig.Process()
-		req := functions.FunctionRequest{
+		req := executor.FunctionRequest{
 			Process:      commandName,
 			ProcessArgs:  arguments,
 			InputReader:  r.Body,
@@ -196,7 +196,7 @@ func getEnvironment(r *http.Request) []string {
 
 func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
 	commandName, arguments := watchdogConfig.Process()
-	functionInvoker := functions.HTTPFunctionRunner{
+	functionInvoker := executor.HTTPFunctionRunner{
 		Process:     commandName,
 		ProcessArgs: arguments,
 	}
@@ -206,7 +206,7 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		req := functions.FunctionRequest{
+		req := executor.FunctionRequest{
 			Process:      commandName,
 			ProcessArgs:  arguments,
 			InputReader:  r.Body,

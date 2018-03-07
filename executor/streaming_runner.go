@@ -1,4 +1,4 @@
-package functions
+package executor
 
 import (
 	"fmt"
@@ -43,12 +43,16 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 		go func() {
 			<-timer.C
 
-			fmt.Printf("Function was killed by ExecTimeout: %d\n", f.ExecTimeout)
+			log.Printf("Function was killed by ExecTimeout: %s\n", f.ExecTimeout.String())
 			killErr := cmd.Process.Kill()
 			if killErr != nil {
 				fmt.Println("Error killing function due to ExecTimeout", killErr)
 			}
 		}()
+	}
+
+	if timer != nil {
+		defer timer.Stop()
 	}
 
 	if req.InputReader != nil {

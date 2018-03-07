@@ -1,4 +1,4 @@
-package functions
+package executor
 
 import (
 	"io"
@@ -44,19 +44,19 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 
 	var timer *time.Timer
 	if f.ExecTimeout > time.Millisecond*0 {
-		log.Println("Started a timer.")
 
 		timer = time.NewTimer(f.ExecTimeout)
 		go func() {
 			<-timer.C
 
-			log.Printf("Function was killed by ExecTimeout: %s\n", f.ExecTimeout)
+			log.Printf("Function was killed by ExecTimeout: %s\n", f.ExecTimeout.String())
 			killErr := cmd.Process.Kill()
 			if killErr != nil {
 				log.Println("Error killing function due to ExecTimeout", killErr)
 			}
 		}()
 	}
+
 	if timer != nil {
 		defer timer.Stop()
 	}
