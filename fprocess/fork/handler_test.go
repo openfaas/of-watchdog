@@ -2,6 +2,7 @@ package fork
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -133,10 +134,15 @@ func TestHandler_HandleRun_e2e(t *testing.T) {
 	http.HandleFunc("/", handler.HandleRun)
 	http.HandleFunc("/stderr/", handler.HandleStderr)
 
-	server := httptest.NewServer(http.DefaultServeMux)
+	server := httptest.NewUnstartedServer(http.DefaultServeMux)
+	server.TLS = &tls.Config{NextProtos: []string{"h2"}}
+	server.Config.TLSNextProto = nil
+	server.StartTLS()
+
 	defer server.Close()
 
 	client := server.Client()
+	client.Transport.(*http.Transport).TLSClientConfig.NextProtos = []string{"h2"}
 
 	// stdout request
 	req, err := http.NewRequest("POST", server.URL, orR)
