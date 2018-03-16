@@ -41,6 +41,7 @@ func main() {
 	}
 
 	http.HandleFunc("/", requestHandler)
+	http.HandleFunc("/_/health", makeHealthHandler())
 	log.Fatal(s.ListenAndServe())
 }
 
@@ -221,5 +222,31 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 			w.Write([]byte(err.Error()))
 		}
 
+	}
+}
+
+func lockFilePresent() bool {
+	path := filepath.Join(os.TempDir(), ".lock")
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
+func makeHealthHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			if lockFilePresent() == false {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+			break
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
 	}
 }
