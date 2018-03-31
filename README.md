@@ -16,41 +16,44 @@ History/context: the original watchdog supported mode the Serializing fork mode 
 
 When the of-watchdog is complete this version will support four modes as listed below. We may consolidate or remove some of these modes before going to 1.0 so please consider modes 2-4 experimental.
 
-### 1. Streaming fork (mode=streaming) - default.
 
-Forks a process per request and can deal with more data than is available memory capacity - i.e. 512mb VM can process multiple GB of video.
+### 1. Serializing fork (mode=serializing)
 
-HTTP headers cannot be sent after function starts executing due to input/output being hooked-up directly to response for streaming efficiencies. Response code is always 200 unless there is an issue forking the process. An error mid-flight will have to be picked up on the client. Multi-threaded.
+#### 1.1 Status
 
-* Input is sent back to client as soon as it's printed to stdout by the executing process.
+This mode is designed to replicate the behaviour of the original watchdog for backwards compatibility.
+
+#### 1.2 Description
+
+Forks one process per request. Multi-threaded. Ideal for retro-fitting a CGI application handler i.e. for Flask.
+
+Limited to processing files sized as per available memory.
+
+Reads entire request into memory from the HTTP request. At this point we serialize or modify if required. That is then written into the stdin pipe.
+
+* Stdout pipe is read into memory and then serialized or modified if necessary before being written back to the HTTP response.
+
+* HTTP headers can be set even after executing the function.
 
 * A static Content-type can be set ahead of time.
 
 * Exec timeout: supported.
 
-### 2. Afterburn (mode=afterburn)
+### 2. HTTP (mode=http)
 
-Uses a single process for all requests, if that request dies the container dies.
+#### 2.1 Status
 
-Vastly accelerated processing speed but requires a client library for each language - HTTP over stdin/stdout. Single-threaded with a mutex.
+The HTTP mode is set to become the default mode for future OpenFaaS templates.
 
-* Limited to processing files sized as per available memory.
+The following templates have been available for testing:
 
-* HTTP headers can be set even after executing the function.
+| Template               | HTTP framework     | Repo                                                             |
+|------------------------|--------------------|------------------------------------------------------------------|
+| Node.js                | Express.js         | https://github.com/openfaas-incubator/node8-express-template     |
+| Python 2.7             | Flask              | https://github.com/openfaas-incubator/python27-flask-template    |
+| Golang                 | Go HTTP (stdlib )  | https://github.com/openfaas-incubator/golang-http-template       |
 
-* A dynamic Content-type can be set from the client library.
-
-* Exec timeout: not supported.
-
-Example client libraries:
-
-https://github.com/openfaas/nodejs-afterburn
-
-https://github.com/alexellis/python-afterburn
-
-https://github.com/alexellis/java-afterburn
-
-### 3. HTTP (mode=http)
+#### 2.2 Description
 
 The HTTP mode is similar to AfterBurn.
 
@@ -84,21 +87,45 @@ Cons:
 
 * One more HTTP hop in the chain between the client and the function
 
-### 4. Serializing fork (mode=serializing)
+### 3. Streaming fork (mode=streaming) - default.
 
-Forks one process per request. Multi-threaded. Ideal for retro-fitting a CGI application handler i.e. for Flask.
+Forks a process per request and can deal with more data than is available memory capacity - i.e. 512mb VM can process multiple GB of video.
 
-Limited to processing files sized as per available memory.
+HTTP headers cannot be sent after function starts executing due to input/output being hooked-up directly to response for streaming efficiencies. Response code is always 200 unless there is an issue forking the process. An error mid-flight will have to be picked up on the client. Multi-threaded.
 
-Reads entire request into memory from the HTTP request. At this point we serialize or modify if required. That is then written into the stdin pipe.
-
-* Stdout pipe is read into memory and then serialized or modified if necessary before being written back to the HTTP response.
-
-* HTTP headers can be set even after executing the function.
+* Input is sent back to client as soon as it's printed to stdout by the executing process.
 
 * A static Content-type can be set ahead of time.
 
 * Exec timeout: supported.
+
+### 4. Afterburn (mode=afterburn)
+
+### 4.1 Status
+
+Afterburn should be considered for deprecation in favour of the HTTP mode.
+
+Several sample templates are available under the OpenFaaS incubator organisation.
+
+https://github.com/openfaas/nodejs-afterburn
+
+https://github.com/openfaas/python-afterburn
+
+https://github.com/openfaas/java-afterburn
+
+### 4.2 Details
+
+Uses a single process for all requests, if that request dies the container dies.
+
+Vastly accelerated processing speed but requires a client library for each language - HTTP over stdin/stdout. Single-threaded with a mutex.
+
+* Limited to processing files sized as per available memory.
+
+* HTTP headers can be set even after executing the function.
+
+* A dynamic Content-type can be set from the client library.
+
+* Exec timeout: not supported.
 
 ## Configuration
 
