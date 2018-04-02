@@ -16,18 +16,20 @@ import (
 
 // HTTPFunctionRunner creates and maintains one process responsible for handling all calls
 type HTTPFunctionRunner struct {
-	ExecTimeout  time.Duration // ExecTimeout the maxmium duration or an upstream function call
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	Process      string
-	ProcessArgs  []string
-	Command      *exec.Cmd
-	StdinPipe    io.WriteCloser
-	StdoutPipe   io.ReadCloser
-	Stderr       io.Writer
-	Mutex        sync.Mutex
-	Client       *http.Client
-	UpstreamURL  *url.URL
+	ExecTimeout           time.Duration // ExecTimeout the maxmium duration or an upstream function call
+	ReadTimeout           time.Duration
+	WriteTimeout          time.Duration
+	Process               string
+	ProcessArgs           []string
+	Command               *exec.Cmd
+	StdinPipe             io.WriteCloser
+	StdoutPipe            io.ReadCloser
+	Stderr                io.Writer
+	Mutex                 sync.Mutex
+	Client                *http.Client
+	UpstreamURL           *url.URL
+	StderrBufferSizeBytes int
+	StdoutBufferSizeBytes int
 }
 
 // Start forks the process used for processing incoming requests
@@ -52,9 +54,9 @@ func (f *HTTPFunctionRunner) Start() error {
 
 	// Prints stderr to console and is picked up by container logging driver.
 	go func() {
-		log.Println("Started logging stderr from function.")
+		// log.Println("Started logging stderr from function.")
 		for {
-			errBuff := make([]byte, 256)
+			errBuff := make([]byte, f.StderrBufferSizeBytes)
 
 			_, err := errPipe.Read(errBuff)
 			if err != nil {
@@ -67,9 +69,8 @@ func (f *HTTPFunctionRunner) Start() error {
 	}()
 
 	go func() {
-		log.Println("Started logging stdout from function.")
 		for {
-			errBuff := make([]byte, 256)
+			errBuff := make([]byte, f.StdoutBufferSizeBytes)
 
 			_, err := f.StdoutPipe.Read(errBuff)
 			if err != nil {

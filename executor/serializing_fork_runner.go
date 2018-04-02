@@ -28,17 +28,12 @@ func (f *SerializingForkFunctionRunner) Run(req FunctionRequest, w http.Response
 
 	if functionBytes != nil {
 		_, err = w.Write(*functionBytes)
-	} else {
-		log.Println("Empty function response.")
 	}
 
 	return err
 }
 
 func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*[]byte, error) {
-	log.Printf("Running %s", req.Process)
-
-	start := time.Now()
 	cmd := exec.Command(req.Process, req.ProcessArgs...)
 	cmd.Env = req.Environment
 
@@ -94,9 +89,6 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 	if waitErr != nil {
 		return nil, err
 	}
-
-	done := time.Since(start)
-	log.Printf("Took %f secs", done.Seconds())
 
 	return functionRes, nil
 }

@@ -24,24 +24,25 @@ type FunctionRequest struct {
 	ContentLength *int64
 }
 
-// ForkFunctionRunner forks a process for each invocation
-type ForkFunctionRunner struct {
-	ExecTimeout time.Duration
+// StreamingForkFunctionRunner forks a process for each invocation
+type StreamingForkFunctionRunner struct {
+	ExecTimeout           time.Duration
+	StderrBufferSizeBytes int
 }
 
 // Run run a fork for each invocation
-func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
-	log.Printf("Running %s", req.Process)
-	start := time.Now()
+func (f *StreamingForkFunctionRunner) Run(req FunctionRequest) error {
+
 	cmd := exec.Command(req.Process, req.ProcessArgs...)
 	cmd.Env = req.Environment
 
-	var timer *time.Timer
+	var cancel *time.Timer
+
 	if f.ExecTimeout > time.Millisecond*0 {
-		timer = time.NewTimer(f.ExecTimeout)
+		cancel = time.NewTimer(f.ExecTimeout)
 
 		go func() {
-			<-timer.C
+			<-cancel.C
 
 			log.Printf("Function was killed by ExecTimeout: %s\n", f.ExecTimeout.String())
 			killErr := cmd.Process.Kill()
@@ -51,8 +52,8 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 		}()
 	}
 
-	if timer != nil {
-		defer timer.Stop()
+	if cancel != nil {
+		defer cancel.Stop()
 	}
 
 	if req.InputReader != nil {
@@ -62,13 +63,17 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 
 	cmd.Stdout = req.OutputWriter
 
-	errPipe, _ := cmd.StderrPipe()
+	errPipe, getErrPipe := cmd.StderrPipe()
+
+	if getErrPipe != nil {
+		log.Println("getErrPipe - ", getErrPipe)
+	}
 
 	// Prints stderr to console and is picked up by container logging driver.
 	go func() {
-		log.Println("Started logging stderr from function.")
+		// log.Println("Started logging stderr from function.")
 		for {
-			errBuff := make([]byte, 256)
+			errBuff := make([]byte, f.StderrBufferSizeBytes)
 
 			n, err := errPipe.Read(errBuff)
 			if err != nil {
@@ -87,21 +92,16 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 	startErr := cmd.Start()
 
 	if startErr != nil {
-		return startErr
+		return fmt.Errorf("startErr: %s", startErr)
 	}
 
-	waitErr := cmd.Wait()
-	done := time.Since(start)
-	log.Printf("Took %f secs", done.Seconds())
-	if timer != nil {
-		timer.Stop()
+	if cancel != nil {
+		cancel.Stop()
 	}
 
 	req.InputReader.Close()
 
-	if waitErr != nil {
-		return waitErr
-	}
+	_, waitErr := cmd.Process.Wait()
 
-	return nil
+	return waitErr
 }

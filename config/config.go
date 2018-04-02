@@ -18,6 +18,9 @@ type WatchdogConfig struct {
 	ContentType      string
 	InjectCGIHeaders bool
 	OperationalMode  int
+
+	StderrBufferSizeBytes int
+	StdoutBufferSizeBytes int
 }
 
 // Process returns a string for the process and a slice for the arguments from the FunctionProcess.
@@ -50,15 +53,21 @@ func New(env []string) (WatchdogConfig, error) {
 		contentType = val
 	}
 
+	defaultBytes := 1024
+	defaultTimeout := time.Second * 10
+	defaultHTTPPort := 8080
+
 	config := WatchdogConfig{
-		TCPPort:          getInt(envMap, "port", 8080),
-		HTTPReadTimeout:  getDuration(envMap, "read_timeout", time.Second*10),
-		HTTPWriteTimeout: getDuration(envMap, "write_timeout", time.Second*10),
-		FunctionProcess:  functionProcess,
-		InjectCGIHeaders: true,
-		ExecTimeout:      getDuration(envMap, "exec_timeout", time.Second*10),
-		OperationalMode:  ModeStreaming,
-		ContentType:      contentType,
+		TCPPort:               getInt(envMap, "port", defaultHTTPPort),
+		HTTPReadTimeout:       getDuration(envMap, "read_timeout", defaultTimeout),
+		HTTPWriteTimeout:      getDuration(envMap, "write_timeout", defaultTimeout),
+		FunctionProcess:       functionProcess,
+		InjectCGIHeaders:      true,
+		ExecTimeout:           getDuration(envMap, "exec_timeout", defaultTimeout),
+		OperationalMode:       ModeStreaming,
+		ContentType:           contentType,
+		StderrBufferSizeBytes: getInt(envMap, "stderr_buffer_bytes", defaultBytes),
+		StdoutBufferSizeBytes: getInt(envMap, "stdout_buffer_bytes", defaultBytes),
 	}
 
 	if val := envMap["mode"]; len(val) > 0 {

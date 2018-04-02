@@ -103,29 +103,7 @@ HTTP headers cannot be sent after function starts executing due to input/output 
 
 ### 4.1 Status
 
-Afterburn should be considered for deprecation in favour of the HTTP mode.
-
-Several sample templates are available under the OpenFaaS incubator organisation.
-
-https://github.com/openfaas/nodejs-afterburn
-
-https://github.com/openfaas/python-afterburn
-
-https://github.com/openfaas/java-afterburn
-
-### 4.2 Details
-
-Uses a single process for all requests, if that request dies the container dies.
-
-Vastly accelerated processing speed but requires a client library for each language - HTTP over stdin/stdout. Single-threaded with a mutex.
-
-* Limited to processing files sized as per available memory.
-
-* HTTP headers can be set even after executing the function.
-
-* A dynamic Content-type can be set from the client library.
-
-* Exec timeout: not supported.
+Deprecated.
 
 ## Configuration
 
@@ -142,5 +120,7 @@ Environmental variables:
 | `content_type`         | Yes          | Force a specific Content-Type response for all responses - only in forking/serializing modes. |
 | `suppress_lock`        | No           | The watchdog will attempt to write a lockfile to /tmp/ for swarm healthchecks - set this to true to disable behaviour. |
 | `upstream_url`         | Yes          | `http` mode only - where to forward requests i.e. 127.0.0.1:5000 |
+| `stderr_buffer_bytes`  | Yes          | Size in bytes of buffer to read from stderr when writing to stderr of container     |
+| `stdout_buffer_bytes`  | Yes          | Size in bytes of buffer to read from stdout when writing to stdout of container (in HTTP mode only)     |
 
 > Note: the .lock file is implemented for health-checking, but cannot be disabled yet. You must create this file in /tmp/.

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/openfaas-incubator/of-watchdog/config"
 	"github.com/openfaas-incubator/of-watchdog/executor"
@@ -49,13 +50,13 @@ func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.HandlerFunc 
 
 	switch watchdogConfig.OperationalMode {
 	case config.ModeStreaming:
-		requestHandler = makeForkRequestHandler(watchdogConfig)
+		requestHandler = makeStreamingForkFunctionRunner(watchdogConfig)
 		break
 	case config.ModeSerializing:
 		requestHandler = makeSerializingForkRequestHandler(watchdogConfig)
 		break
 	case config.ModeAfterBurn:
-		requestHandler = makeAfterBurnRequestHandler(watchdogConfig)
+		log.Fatalln("Afterburn mode has been deprecated. Please see the new 'http' mode.")
 		break
 	case config.ModeHTTP:
 		requestHandler = makeHTTPRequestHandler(watchdogConfig)
@@ -73,39 +74,6 @@ func lock() error {
 	log.Printf("Writing lock file at: %s", lockFile)
 	return ioutil.WriteFile(lockFile, nil, 0600)
 
-}
-
-func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
-
-	commandName, arguments := watchdogConfig.Process()
-	functionInvoker := executor.AfterBurnFunctionRunner{
-		Process:     commandName,
-		ProcessArgs: arguments,
-	}
-
-	fmt.Printf("Forking - %s %s\n", commandName, arguments)
-	functionInvoker.Start()
-
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		req := executor.FunctionRequest{
-			Process:      commandName,
-			ProcessArgs:  arguments,
-			InputReader:  r.Body,
-			OutputWriter: w,
-		}
-
-		functionInvoker.Mutex.Lock()
-
-		err := functionInvoker.Run(req, r.ContentLength, r, w)
-
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte(err.Error()))
-		}
-
-		functionInvoker.Mutex.Unlock()
-	}
 }
 
 func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
@@ -132,16 +100,25 @@ func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig) fun
 		}
 
 		w.Header().Set("Content-Type", watchdogConfig.ContentType)
+		start := time.Now()
 		err := functionInvoker.Run(req, w)
+
+		taken := time.Since(start).Seconds()
+		method := "Streaming"
+
 		if err != nil {
+			log.Printf("%s: %s %s (%s) - %fs (ERR)", method, r.Method, r.URL, req.Process, taken)
 			log.Println(err)
+		} else {
+			log.Printf("%s: %s %s (%s) - %fs", method, r.Method, r.URL, req.Process, taken)
 		}
 	}
 }
 
-func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
-	functionInvoker := executor.ForkFunctionRunner{
-		ExecTimeout: watchdogConfig.ExecTimeout,
+func makeStreamingForkFunctionRunner(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
+	functionInvoker := executor.StreamingForkFunctionRunner{
+		ExecTimeout:           watchdogConfig.ExecTimeout,
+		StderrBufferSizeBytes: watchdogConfig.StderrBufferSizeBytes,
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -162,13 +139,22 @@ func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 		}
 
 		w.Header().Set("Content-Type", watchdogConfig.ContentType)
+		start := time.Now()
 		err := functionInvoker.Run(req)
+
+		taken := time.Since(start).Seconds()
+		method := "Streaming"
+
 		if err != nil {
+			log.Printf("%s: %s %s (%s) - %fs (ERR)", method, r.Method, r.URL, req.Process, taken)
 			log.Println(err.Error())
 
 			// Probably cannot write to client if we already have written a header
-			// w.WriteHeader(500)
-			// w.Write([]byte(err.Error()))
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
+		} else {
+			log.Printf("%s: %s %s (%s) - %fs", method, r.Method, r.URL, req.Process, taken)
+
 		}
 	}
 }
@@ -197,9 +183,11 @@ func getEnvironment(r *http.Request) []string {
 func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
 	commandName, arguments := watchdogConfig.Process()
 	functionInvoker := executor.HTTPFunctionRunner{
-		ExecTimeout: watchdogConfig.ExecTimeout,
-		Process:     commandName,
-		ProcessArgs: arguments,
+		ExecTimeout:           watchdogConfig.ExecTimeout,
+		Process:               commandName,
+		ProcessArgs:           arguments,
+		StderrBufferSizeBytes: watchdogConfig.StderrBufferSizeBytes,
+		StdoutBufferSizeBytes: watchdogConfig.StdoutBufferSizeBytes,
 	}
 
 	fmt.Printf("Forking - %s %s\n", commandName, arguments)
