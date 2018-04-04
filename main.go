@@ -166,9 +166,8 @@ func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 		if err != nil {
 			log.Println(err.Error())
 
-			// Probably cannot write to client if we already have written a header
-			// w.WriteHeader(500)
-			// w.Write([]byte(err.Error()))
+			w.WriteHeader(500)
+			w.Write([]byte(err.Error()))
 		}
 	}
 }

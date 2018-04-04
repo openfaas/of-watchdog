@@ -92,7 +92,7 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 
 	waitErr := cmd.Wait()
 	if waitErr != nil {
-		return nil, err
+		return nil, waitErr
 	}
 
 	done := time.Since(start)
