@@ -100,7 +100,11 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	for h := range r.Header {
 		request.Header.Set(h, r.Header.Get(h))
 	}
+
+	copyHeaders(request.Header, &r.Header)
+
 	ctx, cancel := context.WithTimeout(context.Background(), f.ExecTimeout)
+
 	defer cancel()
 
 	res, err := f.Client.Do(request.WithContext(ctx))
@@ -133,9 +137,7 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 		return err
 	}
 
-	for h := range res.Header {
-		w.Header().Set(h, res.Header.Get(h))
-	}
+	copyHeaders(w.Header(), &res.Header)
 
 	w.WriteHeader(res.StatusCode)
 	if res.Body != nil {
@@ -150,6 +152,14 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	log.Printf("%s %s - %s - ContentLength: %d", r.Method, r.RequestURI, res.Status, res.ContentLength)
 
 	return nil
+}
+
+func copyHeaders(destination http.Header, source *http.Header) {
+	for k, v := range *source {
+		vClone := make([]string, len(v))
+		copy(vClone, v)
+		(destination)[k] = vClone
+	}
 }
 
 func makeProxyClient(dialTimeout time.Duration) *http.Client {
