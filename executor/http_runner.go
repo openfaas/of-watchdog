@@ -96,7 +96,13 @@ func (f *HTTPFunctionRunner) Start() error {
 // Run a function with a long-running process with a HTTP protocol for communication
 func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *http.Request, w http.ResponseWriter) error {
 
-	request, _ := http.NewRequest(r.Method, f.UpstreamURL.String(), r.Body)
+	upstreamURL := f.UpstreamURL.String()
+
+	if len(r.URL.RawQuery) > 0 {
+		upstreamURL += "?" + r.URL.RawQuery
+	}
+
+	request, _ := http.NewRequest(r.Method, upstreamURL, r.Body)
 	for h := range r.Header {
 		request.Header.Set(h, r.Header.Get(h))
 	}
