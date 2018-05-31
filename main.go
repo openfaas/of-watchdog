@@ -214,6 +214,10 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 			OutputWriter: w,
 		}
 
+		if r.Body != nil {
+			defer r.Body.Close()
+		}
+
 		err := functionInvoker.Run(req, r.ContentLength, r, w)
 
 		if err != nil {
