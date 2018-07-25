@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"regexp"
 	"sync"
 	"time"
 )
@@ -99,13 +98,8 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 
 	upstreamURL := f.UpstreamURL.String()
 
-	matcher, _ := regexp.Compile("/?function/([^/?]+)(.*)")
-	parts := matcher.FindStringSubmatch(r.RequestURI)
-
-	// The first is the original string, the second the function name
-	// and the third anything else on the path, including the query string
-	if 3 == len(parts) {
-		upstreamURL += parts[2]
+	if len(r.RequestURI) > 0 {
+		upstreamURL += r.RequestURI
 	}
 
 	request, _ := http.NewRequest(r.Method, upstreamURL, r.Body)
