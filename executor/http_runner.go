@@ -107,6 +107,7 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 		request.Header.Set(h, r.Header.Get(h))
 	}
 
+	request.Host = r.Host
 	copyHeaders(request.Header, &r.Header)
 
 	ctx, cancel := context.WithTimeout(context.Background(), f.ExecTimeout)
