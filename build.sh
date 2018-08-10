@@ -7,9 +7,9 @@ if [ ! "$arch" = "x86_64" ] ; then
     exit 1
 fi
 
-if [ ! $http_proxy == "" ] 
+if [ ! "$http_proxy" = "" ]
 then
-    docker build --no-cache --build-arg https_proxy=$https_proxy --build-arg http_proxy=$http_proxy -t functions/of-watchdog:build .
+    docker build --no-cache --build-arg "https_proxy=$https_proxy" --build-arg "http_proxy=$http_proxy" -t functions/of-watchdog:build .
 else
     docker build -t functions/of-watchdog:build .
 fi
@@ -23,4 +23,3 @@ docker cp buildoutput:/go/src/github.com/openfaas-incubator/of-watchdog/of-watch
 docker cp buildoutput:/go/src/github.com/openfaas-incubator/of-watchdog/of-watchdog.exe ./of-watchdog.exe
 
 docker rm buildoutput
-
