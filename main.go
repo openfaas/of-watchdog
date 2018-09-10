@@ -1,19 +1,26 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/openfaas-incubator/of-watchdog/config"
 	"github.com/openfaas-incubator/of-watchdog/executor"
 )
 
+var acceptingConnections bool
+
 func main() {
+	acceptingConnections = false
 	watchdogConfig, configErr := config.New(os.Environ())
 	if configErr != nil {
 		fmt.Fprintf(os.Stderr, configErr.Error())
@@ -36,12 +43,22 @@ func main() {
 
 	log.Printf("OperationalMode: %s\n", config.WatchdogMode(watchdogConfig.OperationalMode))
 
-	if err := lock(); err != nil {
-		log.Panic(err.Error())
+	if !watchdogConfig.SuppressLock {
+		path, lockErr := lock()
+
+		if lockErr != nil {
+			log.Panicf("Cannot write %s. To disable lock-file set env suppress_lock=true.\n Error: %s.\n", path, lockErr.Error())
+		} else {
+			acceptingConnections = true
+		}
+	} else {
+		log.Println("Warning: \"suppress_lock\" is enabled. No automated health-checks will be in place for your function.")
+		acceptingConnections = true
 	}
 
 	http.HandleFunc("/", requestHandler)
-	log.Fatal(s.ListenAndServe())
+	// log.Fatal(s.ListenAndServe())
+	listenUntilShutdown(watchdogConfig.ExecTimeout, s)
 }
 
 func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.HandlerFunc {
@@ -68,11 +85,12 @@ func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.HandlerFunc 
 	return requestHandler
 }
 
-func lock() error {
+func lock() (string, error) {
 	lockFile := filepath.Join(os.TempDir(), ".lock")
 	log.Printf("Writing lock file at: %s", lockFile)
-	return ioutil.WriteFile(lockFile, nil, 0600)
-
+	writeErr := ioutil.WriteFile(lockFile, nil, 0600)
+	acceptingConnections = true
+	return lockFile, writeErr
 }
 
 func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
@@ -226,4 +244,34 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 		}
 
 	}
+}
+
+func listenUntilShutdown(shutdownTimeout time.Duration, s *http.Server) {
+	idleConnsClosed := make(chan struct{})
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGTERM)
+
+		<-sig
+
+		log.Printf("SIGTERM received.. shutting down server")
+
+		acceptingConnections = false
+
+		if err := s.Shutdown(context.Background()); err != nil {
+			// Error from closing listeners, or context timeout:
+			log.Printf("Error in Shutdown: %v", err)
+		}
+
+		<-time.Tick(shutdownTimeout)
+
+		close(idleConnsClosed)
+	}()
+
+	if err := s.ListenAndServe(); err != http.ErrServerClosed {
+		log.Printf("Error ListenAndServe: %v", err)
+		close(idleConnsClosed)
+	}
+
+	<-idleConnsClosed
 }
