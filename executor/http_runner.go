@@ -58,7 +58,9 @@ func (f *HTTPFunctionRunner) Start() error {
 
 			_, err := errPipe.Read(errBuff)
 			if err != nil {
-				log.Fatalf("Error reading stderr: %s", err)
+				if err.Error() != "EOF" {
+					log.Fatalf("Error reading stderr: %s", err)
+				}
 
 			} else {
 				log.Printf("stderr: %s", errBuff)
@@ -73,7 +75,9 @@ func (f *HTTPFunctionRunner) Start() error {
 
 			_, err := f.StdoutPipe.Read(errBuff)
 			if err != nil {
-				log.Fatalf("Error reading stdout: %s", err)
+				if err.Error() != "EOF" {
+					log.Fatalf("Error reading stdout: %s", err)
+				}
 
 			} else {
 				log.Printf("stdout: %s", errBuff)
