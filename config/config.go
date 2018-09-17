@@ -18,6 +18,8 @@ type WatchdogConfig struct {
 	ContentType      string
 	InjectCGIHeaders bool
 	OperationalMode  int
+	SuppressLock     bool
+	UpstreamURL      string
 }
 
 // Process returns a string for the process and a slice for the arguments from the FunctionProcess.
@@ -36,13 +38,21 @@ func New(env []string) (WatchdogConfig, error) {
 
 	envMap := mapEnv(env)
 
-	var functionProcess string
+	var (
+		functionProcess string
+		upstreamURL     string
+	)
+
 	if val, exists := envMap["fprocess"]; exists {
 		functionProcess = val
 	}
 
 	if val, exists := envMap["function_process"]; exists {
 		functionProcess = val
+	}
+
+	if val, exists := envMap["upstream_url"]; exists {
+		upstreamURL = val
 	}
 
 	contentType := "application/octet-stream"
@@ -59,6 +69,8 @@ func New(env []string) (WatchdogConfig, error) {
 		ExecTimeout:      getDuration(envMap, "exec_timeout", time.Second*10),
 		OperationalMode:  ModeStreaming,
 		ContentType:      contentType,
+		SuppressLock:     getBool(envMap, "suppress_lock"),
+		UpstreamURL:      upstreamURL,
 	}
 
 	if val := envMap["mode"]; len(val) > 0 {
@@ -102,4 +114,12 @@ func getInt(env map[string]string, key string, defaultValue int) int {
 	}
 
 	return result
+}
+
+func getBool(env map[string]string, key string) bool {
+	if env[key] == "true" {
+		return true
+	}
+
+	return false
 }

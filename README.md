@@ -137,10 +137,10 @@ Environmental variables:
 | `read_timeout`         | Yes          | HTTP timeout for reading the payload from the client caller (in seconds) |
 | `write_timeout`        | Yes          | HTTP timeout for writing a response body from your function (in seconds)  |
 | `exec_timeout`         | Yes          | Exec timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0. |
-| `port`                 | Yes          | Specify an alternative TCP port fo testing |
+| `port`                 | Yes          | Specify an alternative TCP port for testing |
 | `write_debug`          | No           | Write all output, error messages, and additional information to the logs. Default is false. |
 | `content_type`         | Yes          | Force a specific Content-Type response for all responses - only in forking/serializing modes. |
-| `suppress_lock`        | No           | The watchdog will attempt to write a lockfile to /tmp/ for swarm healthchecks - set this to true to disable behaviour. |
+| `suppress_lock`        | Yes           | The watchdog will attempt to write a lockfile to /tmp/ for swarm healthchecks - set this to true to disable behaviour. |
 | `upstream_url`         | Yes          | `http` mode only - where to forward requests i.e. 127.0.0.1:5000 |
 
 > Note: the .lock file is implemented for health-checking, but cannot be disabled yet. You must create this file in /tmp/.
