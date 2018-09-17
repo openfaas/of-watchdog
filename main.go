@@ -1,19 +1,31 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
+	"syscall"
+	"time"
 
 	"github.com/openfaas-incubator/of-watchdog/config"
 	"github.com/openfaas-incubator/of-watchdog/executor"
 )
 
+var (
+	acceptingConnections int32
+)
+
 func main() {
+	atomic.StoreInt32(&acceptingConnections, 0)
+
 	watchdogConfig, configErr := config.New(os.Environ())
 	if configErr != nil {
 		fmt.Fprintf(os.Stderr, configErr.Error())
@@ -25,6 +37,15 @@ func main() {
 		os.Exit(-1)
 	}
 
+	requestHandler := buildRequestHandler(watchdogConfig)
+
+	log.Printf("OperationalMode: %s\n", config.WatchdogMode(watchdogConfig.OperationalMode))
+
+	http.HandleFunc("/", requestHandler)
+	http.HandleFunc("/_/health", makeHealthHandler())
+
+	shutdownTimeout := watchdogConfig.HTTPWriteTimeout
+
 	s := &http.Server{
 		Addr:           fmt.Sprintf(":%d", watchdogConfig.TCPPort),
 		ReadTimeout:    watchdogConfig.HTTPReadTimeout,
@@ -32,17 +53,70 @@ func main() {
 		MaxHeaderBytes: 1 << 20, // Max header of 1MB
 	}
 
-	requestHandler := buildRequestHandler(watchdogConfig)
+	listenUntilShutdown(shutdownTimeout, s, watchdogConfig.SuppressLock)
+}
 
-	log.Printf("OperationalMode: %s\n", config.WatchdogMode(watchdogConfig.OperationalMode))
+func markUnhealthy() error {
+	atomic.StoreInt32(&acceptingConnections, 0)
 
-	if err := lock(); err != nil {
-		log.Panic(err.Error())
+	path := filepath.Join(os.TempDir(), ".lock")
+	log.Printf("Removing lock-file : %s\n", path)
+	removeErr := os.Remove(path)
+	return removeErr
+}
+
+func listenUntilShutdown(shutdownTimeout time.Duration, s *http.Server, suppressLock bool) {
+
+	idleConnsClosed := make(chan struct{})
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGTERM)
+
+		<-sig
+
+		log.Printf("SIGTERM received.. shutting down server in %s\n", shutdownTimeout.String())
+
+		healthErr := markUnhealthy()
+
+		if healthErr != nil {
+			log.Printf("Unable to mark unhealthy during shutdown: %s\n", healthErr.Error())
+		}
+
+		<-time.Tick(shutdownTimeout)
+
+		if err := s.Shutdown(context.Background()); err != nil {
+			// Error from closing listeners, or context timeout:
+			log.Printf("Error in Shutdown: %v", err)
+		}
+
+		log.Printf("No new connections allowed. Exiting in: %s\n", shutdownTimeout.String())
+
+		<-time.Tick(shutdownTimeout)
+
+		close(idleConnsClosed)
+	}()
+
+	// Run the HTTP server in a separate go-routine.
+	go func() {
+		if err := s.ListenAndServe(); err != http.ErrServerClosed {
+			log.Printf("Error ListenAndServe: %v", err)
+			close(idleConnsClosed)
+		}
+	}()
+
+	if suppressLock == false {
+		path, writeErr := createLockFile()
+
+		if writeErr != nil {
+			log.Panicf("Cannot write %s. To disable lock-file set env suppress_lock=true.\n Error: %s.\n", path, writeErr.Error())
+		}
+	} else {
+		log.Println("Warning: \"suppress_lock\" is enabled. No automated health-checks will be in place for your function.")
+
+		atomic.StoreInt32(&acceptingConnections, 1)
 	}
 
-	http.HandleFunc("/", requestHandler)
-	http.HandleFunc("/_/health", makeHealthHandler())
-	log.Fatal(s.ListenAndServe())
+	<-idleConnsClosed
 }
 
 func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.HandlerFunc {
@@ -69,11 +143,16 @@ func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.HandlerFunc 
 	return requestHandler
 }
 
-func lock() error {
-	lockFile := filepath.Join(os.TempDir(), ".lock")
-	log.Printf("Writing lock file at: %s", lockFile)
-	return ioutil.WriteFile(lockFile, nil, 0600)
+// createLockFile returns a path to a lock file and/or an error
+// if the file could not be created.
+func createLockFile() (string, error) {
+	path := filepath.Join(os.TempDir(), ".lock")
+	log.Printf("Writing lock-file to: %s\n", path)
+	writeErr := ioutil.WriteFile(path, []byte{}, 0660)
 
+	atomic.StoreInt32(&acceptingConnections, 1)
+
+	return path, writeErr
 }
 
 func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
@@ -84,7 +163,7 @@ func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http
 		ProcessArgs: arguments,
 	}
 
-	fmt.Printf("Forking - %s %s\n", commandName, arguments)
+	log.Printf("Forking %s %s\n", commandName, arguments)
 	functionInvoker.Start()
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -203,6 +282,16 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 		ProcessArgs: arguments,
 	}
 
+	if len(watchdogConfig.UpstreamURL) == 0 {
+		log.Fatal(`For mode=http you must specify a valid URL for "upstream_url"`)
+	}
+
+	urlValue, upstreamURLErr := url.Parse(watchdogConfig.UpstreamURL)
+	if upstreamURLErr != nil {
+		log.Fatal(upstreamURLErr)
+	}
+	functionInvoker.UpstreamURL = urlValue
+
 	fmt.Printf("Forking - %s %s\n", commandName, arguments)
 	functionInvoker.Start()
 
@@ -237,17 +326,18 @@ func lockFilePresent() bool {
 	return true
 }
 
-func makeHealthHandler() func(w http.ResponseWriter, r *http.Request) {
+func makeHealthHandler() func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			if lockFilePresent() == false {
-				w.WriteHeader(http.StatusInternalServerError)
+			if atomic.LoadInt32(&acceptingConnections) == 0 || lockFilePresent() == false {
+				w.WriteHeader(http.StatusServiceUnavailable)
 				return
 			}
 
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
+
 			break
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)

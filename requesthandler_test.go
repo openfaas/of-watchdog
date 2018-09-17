@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,12 +14,14 @@ func TestHealthHandler_StatusOK_LockFilePresent(t *testing.T) {
 
 	present := lockFilePresent()
 
-	if present == false {
-		if err := lock(); err != nil {
-			t.Fatal(err)
-		}
+	if present {
+		path := filepath.Join(os.TempDir(), ".lock")
+		os.Remove(path)
 	}
 
+	if tmpPath, err := createLockFile(); err != nil {
+		log.Fatalf("Error writing to %s - %s\n", tmpPath, err)
+	}
 	req, err := http.NewRequest(http.MethodGet, "/_/health", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -30,7 +33,6 @@ func TestHealthHandler_StatusOK_LockFilePresent(t *testing.T) {
 	if status := rr.Code; status != required {
 		t.Errorf("handler returned wrong status code - want: %v, got: %v", required, status)
 	}
-
 }
 
 func TestHealthHandler_StatusInternalServerError_LockFileNotPresent(t *testing.T) {
@@ -49,7 +51,7 @@ func TestHealthHandler_StatusInternalServerError_LockFileNotPresent(t *testing.T
 	handler := makeHealthHandler()
 	handler(rr, req)
 
-	required := http.StatusInternalServerError
+	required := http.StatusServiceUnavailable
 	if status := rr.Code; status != required {
 		t.Errorf("handler returned wrong status code - want: %v, got: %v", required, status)
 	}

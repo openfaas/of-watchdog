@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -82,13 +81,6 @@ func (f *HTTPFunctionRunner) Start() error {
 	}()
 
 	f.Client = makeProxyClient(f.ExecTimeout)
-
-	urlValue, upstreamURLErr := url.Parse(os.Getenv("upstream_url"))
-	if upstreamURLErr != nil {
-		log.Fatal(upstreamURLErr)
-	}
-
-	f.UpstreamURL = urlValue
 
 	return cmd.Start()
 }
