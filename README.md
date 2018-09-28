@@ -47,11 +47,16 @@ The HTTP mode is set to become the default mode for future OpenFaaS templates.
 
 The following templates have been available for testing:
 
-| Template               | HTTP framework     | Repo                                                             |
-|------------------------|--------------------|------------------------------------------------------------------|
-| Node.js                | Express.js         | https://github.com/openfaas-incubator/node8-express-template     |
-| Python 2.7             | Flask              | https://github.com/openfaas-incubator/python27-flask-template    |
-| Golang                 | Go HTTP (stdlib )  | https://github.com/openfaas-incubator/golang-http-template       |
+| Template               | HTTP framework      | Repo                                                               |
+|------------------------|---------------------|--------------------------------------------------------------------|
+| Node.js LTS            | Express.js          | https://github.com/openfaas-incubator/node8-express-template       |
+| Python 3 & 2.7         | Flask               | https://github.com/openfaas-incubator/python27-flask-template      |
+| Golang                 | Go HTTP (stdlib)    | https://github.com/openfaas-incubator/golang-http-template         |
+| Golang                 | (http.HandlerFunc)  | https://github.com/openfaas-incubator/golang-http-template         |
+| Ruby                   | Sinatra             | https://github.com/openfaas-incubator/ruby-http                    |      
+| Java 8                 | Sun HTTP / Maven    | https://github.com/openfaas/templates/                             |      
+
+Unofficial: [.NET Core / C# and Kestrel](https://github.com/burtonr/csharp-kestrel-template)
 
 #### 2.2 Description
 
