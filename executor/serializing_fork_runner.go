@@ -1,11 +1,13 @@
 package executor
 
 import (
+	"errors"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 )
@@ -84,10 +86,10 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 		return nil, err
 	}
 
-	functionRes, errors := pipeToProcess(stdin, stdout, &data)
+	functionRes, err := pipeToProcess(stdin, stdout, &data)
 
-	if len(errors) > 0 {
-		return nil, errors[0]
+	if err != nil {
+		return nil, err
 	}
 
 	waitErr := cmd.Wait()
@@ -101,45 +103,55 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 	return functionRes, nil
 }
 
-func pipeToProcess(stdin io.WriteCloser, stdout io.Reader, data *[]byte) (*[]byte, []error) {
+func pipeToProcess(stdin io.WriteCloser, stdout io.Reader, data *[]byte) (*[]byte, error) {
 	var functionResult *[]byte
-	var errors []error
-
-	errChannel := make(chan error)
-
-	go func() {
-		for goErr := range errChannel {
-			errors = append(errors, goErr)
-		}
-		close(errChannel)
-	}()
+	errorsSlice := make([]error, 2)
+	hasError := false
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
-	go func(c chan error) {
+	go func() {
 		_, err := stdin.Write(*data)
 		stdin.Close()
 
 		if err != nil {
-			c <- err
+			errorsSlice[0] = err
+			hasError = true
 		}
 
 		wg.Done()
-	}(errChannel)
+	}()
 
-	go func(c chan error) {
+	go func() {
 		var err error
 		result, err := ioutil.ReadAll(stdout)
 		functionResult = &result
 		if err != nil {
-			c <- err
+			errorsSlice[1] = err
+			hasError = true
 		}
 
 		wg.Done()
-	}(errChannel)
+	}()
 
 	wg.Wait()
 
-	return functionResult, errors
+	if !hasError {
+		return functionResult, nil
+	}
+
+	// Remove nil errors
+	errorStrings := []string{}
+
+	for _, err := range errorsSlice {
+		if err == nil {
+			continue
+		}
+		errorStrings = append(errorStrings, err.Error())
+	}
+
+	outputError := errors.New(strings.Join(errorStrings, " and "))
+
+	return functionResult, outputError
 }
