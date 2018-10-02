@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -17,13 +18,14 @@ type SerializingForkFunctionRunner struct {
 
 // Run run a fork for each invocation
 func (f *SerializingForkFunctionRunner) Run(req FunctionRequest, w http.ResponseWriter) error {
-	functionBytes, err := serializeFunction(req, f)
+	functionBytes, execDuration, err := serializeFunction(req, f)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
 		return err
 	}
 
+	w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", execDuration))
 	w.WriteHeader(200)
 
 	if functionBytes != nil {
@@ -35,7 +37,7 @@ func (f *SerializingForkFunctionRunner) Run(req FunctionRequest, w http.Response
 	return err
 }
 
-func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*[]byte, error) {
+func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*[]byte, float64, error) {
 	log.Printf("Running %s", req.Process)
 
 	start := time.Now()
@@ -71,7 +73,7 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 		data, err = ioutil.ReadAll(limitReader)
 
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 	}
@@ -81,24 +83,24 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 
 	err := cmd.Start()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	functionRes, errors := pipeToProcess(stdin, stdout, &data)
 
 	if len(errors) > 0 {
-		return nil, errors[0]
+		return nil, 0, errors[0]
 	}
 
 	waitErr := cmd.Wait()
 	if waitErr != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	done := time.Since(start)
-	log.Printf("Took %f secs", done.Seconds())
+	done := time.Since(start).Seconds()
+	log.Printf("Took %f secs", done)
 
-	return functionRes, nil
+	return functionRes, done, nil
 }
 
 func pipeToProcess(stdin io.WriteCloser, stdout io.Reader, data *[]byte) (*[]byte, []error) {
