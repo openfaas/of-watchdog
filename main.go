@@ -262,6 +262,7 @@ func getEnvironment(r *http.Request) []string {
 		envs = append(envs, kv)
 	}
 	envs = append(envs, fmt.Sprintf("Http_Method=%s", r.Method))
+	envs = append(envs, fmt.Sprintf("Http_ContentLength=%d", r.ContentLength))
 
 	if len(r.URL.RawQuery) > 0 {
 		envs = append(envs, fmt.Sprintf("Http_Query=%s", r.URL.RawQuery))
@@ -269,6 +270,10 @@ func getEnvironment(r *http.Request) []string {
 
 	if len(r.URL.Path) > 0 {
 		envs = append(envs, fmt.Sprintf("Http_Path=%s", r.URL.Path))
+	}
+
+	if len(r.Host) > 0 {
+		envs = append(envs, fmt.Sprintf("Http_Host=%s", r.Host))
 	}
 
 	return envs
