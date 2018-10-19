@@ -176,6 +176,9 @@ func makeProxyClient(dialTimeout time.Duration) *http.Client {
 			IdleConnTimeout:       500 * time.Millisecond,
 			ExpectContinueTimeout: 1500 * time.Millisecond,
 		},
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 
 	return &proxyClient
