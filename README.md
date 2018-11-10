@@ -1,11 +1,12 @@
 # of-watchdog
 
-This is a re-write of the OpenFaaS watchdog.
+The `of-watchdog` is a new version of the OpenFaaS watchdog which provides the original STDIO mode from the Classic Watchdog along with a new HTTP `mode`.
 
-[Original Watchdog source-code](https://github.com/openfaas/faas/tree/master/watchdog)
+See also: [Classic Watchdog](https://github.com/openfaas/faas/tree/master/watchdog)
 
 ### Goals:
 * Cleaner abstractions for maintenance
+* Keep function process warm for lower latency / caching / persistent connections 
 * Explore streaming for large files (beyond disk/RAM capacity)
 
 ![](https://camo.githubusercontent.com/61c169ab5cd01346bc3dc7a11edc1d218f0be3b4/68747470733a2f2f7062732e7477696d672e636f6d2f6d656469612f4447536344626c554941416f34482d2e6a70673a6c61726765)
