@@ -16,32 +16,9 @@ History/context: the original watchdog supported mode the Serializing fork mode 
 
 When the of-watchdog is complete this version will support four modes as listed below. We may consolidate or remove some of these modes before going to 1.0 so please consider modes 2-4 experimental.
 
-
-### 1. Serializing fork (mode=serializing)
+### 1. HTTP (mode=http)
 
 #### 1.1 Status
-
-This mode is designed to replicate the behaviour of the original watchdog for backwards compatibility.
-
-#### 1.2 Description
-
-Forks one process per request. Multi-threaded. Ideal for retro-fitting a CGI application handler i.e. for Flask.
-
-Limited to processing files sized as per available memory.
-
-Reads entire request into memory from the HTTP request. At this point we serialize or modify if required. That is then written into the stdin pipe.
-
-* Stdout pipe is read into memory and then serialized or modified if necessary before being written back to the HTTP response.
-
-* HTTP headers can be set even after executing the function.
-
-* A static Content-type can be set ahead of time.
-
-* Exec timeout: supported.
-
-### 2. HTTP (mode=http)
-
-#### 2.1 Status
 
 The HTTP mode is set to become the default mode for future OpenFaaS templates.
 
@@ -49,16 +26,17 @@ The following templates have been available for testing:
 
 | Template               | HTTP framework      | Repo                                                               |
 |------------------------|---------------------|--------------------------------------------------------------------|
-| Node.js LTS            | Express.js          | https://github.com/openfaas-incubator/node8-express-template       |
-| Python 3 & 2.7         | Flask               | https://github.com/openfaas-incubator/python27-flask-template      |
+| Node.js 8              | Express.js          | https://github.com/openfaas-incubator/node8-express-template       |
+| Node.js 10 (LTS)       | Express.js          | https://github.com/openfaas-incubator/node10-express-template      |
+| Python 3 & 2.7         | Flask               | https://github.com/openfaas-incubator/python-flask-template        |
 | Golang                 | Go HTTP (stdlib)    | https://github.com/openfaas-incubator/golang-http-template         |
 | Golang                 | (http.HandlerFunc)  | https://github.com/openfaas-incubator/golang-http-template         |
-| Ruby                   | Sinatra             | https://github.com/openfaas-incubator/ruby-http                    |      
-| Java 8                 | Sun HTTP / Maven    | https://github.com/openfaas/templates/                             |      
+| Ruby                   | Sinatra             | https://github.com/openfaas-incubator/ruby-http                    |
+| Java 8                 | Sun HTTP / Maven    | https://github.com/openfaas/templates/                             |
 
 Unofficial: [.NET Core / C# and Kestrel](https://github.com/burtonr/csharp-kestrel-template)
 
-#### 2.2 Description
+#### 1.2 Description
 
 The HTTP mode is similar to AfterBurn.
 
@@ -91,6 +69,29 @@ Cons:
 * Daemons such as express/flask/sinatra could be hard to configure or potentially unpredictable when used in this way
 
 * One more HTTP hop in the chain between the client and the function
+
+
+### 2. Serializing fork (mode=serializing)
+
+#### 2.1 Status
+
+This mode is designed to replicate the behaviour of the original watchdog for backwards compatibility.
+
+#### 2.2 Description
+
+Forks one process per request. Multi-threaded. Ideal for retro-fitting a CGI application handler i.e. for Flask.
+
+Limited to processing files sized as per available memory.
+
+Reads entire request into memory from the HTTP request. At this point we serialize or modify if required. That is then written into the stdin pipe.
+
+* Stdout pipe is read into memory and then serialized or modified if necessary before being written back to the HTTP response.
+
+* HTTP headers can be set even after executing the function.
+
+* A static Content-type can be set ahead of time.
+
+* Exec timeout: supported.
 
 ### 3. Streaming fork (mode=streaming) - default.
 
