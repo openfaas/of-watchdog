@@ -54,6 +54,7 @@ func main() {
 	}
 
 	listenUntilShutdown(shutdownTimeout, s, watchdogConfig.SuppressLock)
+
 }
 
 func markUnhealthy() error {

@@ -2,14 +2,18 @@ package executor
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -82,11 +86,21 @@ func (f *HTTPFunctionRunner) Start() error {
 
 	f.Client = makeProxyClient(f.ExecTimeout)
 
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGTERM)
+
+		<-sig
+		cmd.Process.Signal(syscall.SIGTERM)
+
+	}()
+
 	return cmd.Start()
 }
 
 // Run a function with a long-running process with a HTTP protocol for communication
 func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *http.Request, w http.ResponseWriter) error {
+	startedTime := time.Now()
 
 	upstreamURL := f.UpstreamURL.String()
 
@@ -113,6 +127,8 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 
 		// Error unrelated to context / deadline
 		if ctx.Err() == nil {
+			w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
+
 			w.WriteHeader(http.StatusInternalServerError)
 
 			return nil
@@ -124,6 +140,7 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 				if ctx.Err() != nil {
 					// Error due to timeout / deadline
 					log.Printf("Upstream HTTP killed due to exec_timeout: %s\n", f.ExecTimeout)
+					w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
 
 					w.WriteHeader(http.StatusGatewayTimeout)
 					return nil
@@ -132,11 +149,14 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 			}
 		}
 
+		w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return err
 	}
 
 	copyHeaders(w.Header(), &res.Header)
+
+	w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
 
 	w.WriteHeader(res.StatusCode)
 	if res.Body != nil {
