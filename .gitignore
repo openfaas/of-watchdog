@@ -19,4 +19,5 @@ faster
 of-watchdog*
 build
 template
+**/*.sha256
 
