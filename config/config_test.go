@@ -22,6 +22,33 @@ func Test_OperationalMode_Default(t *testing.T) {
 		t.Errorf("Want %s. got: %s", WatchdogMode(ModeStreaming), WatchdogMode(defaults.OperationalMode))
 	}
 }
+func Test_BufferHttpModeDefaultsToFalse(t *testing.T) {
+	env := []string{}
+
+	actual, err := New(env)
+	if err != nil {
+		t.Errorf("Expected no errors")
+	}
+	want := false
+	if actual.BufferHTTPBody != want {
+		t.Errorf("Want %v. got: %v", want, actual.BufferHTTPBody)
+	}
+}
+
+func Test_BufferHttpMode_CanBeSetToTrue(t *testing.T) {
+	env := []string{
+		"buffer_http=true",
+	}
+
+	actual, err := New(env)
+	if err != nil {
+		t.Errorf("Expected no errors")
+	}
+	want := true
+	if actual.BufferHTTPBody != want {
+		t.Errorf("Want %v. got: %v", want, actual.BufferHTTPBody)
+	}
+}
 
 func Test_OperationalMode_AfterBurn(t *testing.T) {
 	env := []string{
@@ -36,7 +63,6 @@ func Test_OperationalMode_AfterBurn(t *testing.T) {
 	if actual.OperationalMode != ModeAfterBurn {
 		t.Errorf("Want %s. got: %s", WatchdogMode(ModeAfterBurn), WatchdogMode(actual.OperationalMode))
 	}
-
 }
 
 func Test_ContentType_Default(t *testing.T) {

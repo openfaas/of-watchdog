@@ -20,6 +20,11 @@ type WatchdogConfig struct {
 	OperationalMode  int
 	SuppressLock     bool
 	UpstreamURL      string
+
+	// BufferHTTPBody buffers the HTTP body in memory
+	// to prevent transfer type of chunked encoding
+	// which some servers do not support.
+	BufferHTTPBody bool
 }
 
 // Process returns a string for the process and a slice for the arguments from the FunctionProcess.
@@ -71,6 +76,7 @@ func New(env []string) (WatchdogConfig, error) {
 		ContentType:      contentType,
 		SuppressLock:     getBool(envMap, "suppress_lock"),
 		UpstreamURL:      upstreamURL,
+		BufferHTTPBody:   getBool(envMap, "buffer_http"),
 	}
 
 	if val := envMap["mode"]; len(val) > 0 {
