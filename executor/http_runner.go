@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -12,25 +13,24 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 )
 
 // HTTPFunctionRunner creates and maintains one process responsible for handling all calls
 type HTTPFunctionRunner struct {
-	ExecTimeout  time.Duration // ExecTimeout the maxmium duration or an upstream function call
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	Process      string
-	ProcessArgs  []string
-	Command      *exec.Cmd
-	StdinPipe    io.WriteCloser
-	StdoutPipe   io.ReadCloser
-	Stderr       io.Writer
-	Mutex        sync.Mutex
-	Client       *http.Client
-	UpstreamURL  *url.URL
+	ExecTimeout    time.Duration // ExecTimeout the maxmium duration or an upstream function call
+	ReadTimeout    time.Duration
+	WriteTimeout   time.Duration
+	Process        string
+	ProcessArgs    []string
+	Command        *exec.Cmd
+	StdinPipe      io.WriteCloser
+	StdoutPipe     io.ReadCloser
+	Stderr         io.Writer
+	Client         *http.Client
+	UpstreamURL    *url.URL
+	BufferHTTPBody bool
 }
 
 // Start forks the process used for processing incoming requests
@@ -108,7 +108,15 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 		upstreamURL += r.RequestURI
 	}
 
-	request, _ := http.NewRequest(r.Method, upstreamURL, r.Body)
+	var body io.Reader
+	if f.BufferHTTPBody {
+		reqBody, _ := ioutil.ReadAll(r.Body)
+		body = bytes.NewReader(reqBody)
+	} else {
+		body = r.Body
+	}
+
+	request, _ := http.NewRequest(r.Method, upstreamURL, body)
 	for h := range r.Header {
 		request.Header.Set(h, r.Header.Get(h))
 	}

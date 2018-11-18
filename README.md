@@ -140,14 +140,16 @@ Environmental variables:
 
 | Option                 | Implemented | Usage             |
 |------------------------|--------------|-------------------------------|
-| `function_process`     | Yes          | The process to invoke for each function call function process (alias - fprocess). This must be a UNIX binary and accept input via STDIN and output via STDOUT.  |
+| `function_process`     | Yes          | Process to execute a server in `http` mode or to be executed for each request in the other modes. For non `http` mode the process must accept input via STDIN and print output via STDOUT. Alias: `fprocess` |
 | `read_timeout`         | Yes          | HTTP timeout for reading the payload from the client caller (in seconds) |
 | `write_timeout`        | Yes          | HTTP timeout for writing a response body from your function (in seconds)  |
 | `exec_timeout`         | Yes          | Exec timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0. |
-| `port`                 | Yes          | Specify an alternative TCP port for testing |
-| `write_debug`          | No           | Write all output, error messages, and additional information to the logs. Default is false. |
+| `port`                 | Yes          | Specify an alternative TCP port for testing. Default: `8080` |
+| `write_debug`          | No           | Write all output, error messages, and additional information to the logs. Default is `false`. |
 | `content_type`         | Yes          | Force a specific Content-Type response for all responses - only in forking/serializing modes. |
-| `suppress_lock`        | Yes           | The watchdog will attempt to write a lockfile to /tmp/ for swarm healthchecks - set this to true to disable behaviour. |
-| `upstream_url`         | Yes          | `http` mode only - where to forward requests i.e. 127.0.0.1:5000 |
+| `suppress_lock`        | Yes           | When set to `false` the watchdog will attempt to write a lockfile to /tmp/ for healthchecks. Default `false` |
+| `upstream_url`         | Yes          | `http` mode only - where to forward requests i.e. `127.0.0.1:5000` |
+| `buffer_http`     | Yes               | `http` mode only - buffers request body to memory before fowarding. Use if your upstream HTTP server does not accept `Transfer-Encoding: chunked` Default: `false` |
+
 
 > Note: the .lock file is implemented for health-checking, but cannot be disabled yet. You must create this file in /tmp/.
