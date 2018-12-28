@@ -125,90 +125,65 @@ func Test_FunctionProcessAlternativeName(t *testing.T) {
 	}
 }
 
-func Test_FunctionProcessWithTargetArgument(t *testing.T) {
-	env := []string{
-		`fprocess=node index.js`,
-	}
-	wantProcess := "node"
-	wantArguments := []string{"index.js"}
+func Test_FunctionProcess_Arguments(t *testing.T) {
 
-	actual, err := New(env)
-	if err != nil {
-		t.Errorf("Expected no errors")
-	}
-
-	process, args := actual.Process()
-	if process != wantProcess {
-		t.Errorf("Want process %v, got: %v", wantProcess, process)
-	}
-
-	if len(args) != len(wantArguments) {
-		t.Errorf("Want %d args, got: %d args", len(wantArguments), len(args))
-		t.Fail()
-	}
-
-	for i, wantArg := range wantArguments {
-		if args[i] != wantArg {
-			t.Errorf("Want arg%d: %s, got: %s", i, wantArg, args[i])
-		}
-	}
-}
-
-func Test_FunctionProcessWithFlag(t *testing.T) {
-	env := []string{
-		`fprocess=node --this-is-a-flag`,
-	}
-	wantProcess := "node"
-	wantArguments := []string{"--this-is-a-flag"}
-
-	actual, err := New(env)
-	if err != nil {
-		t.Errorf("Expected no errors")
+	cases := []struct {
+		scenario      string
+		env           string
+		wantProcess   string
+		wantArguments []string
+	}{
+		{
+			scenario:      "no argument",
+			env:           `fprocess=node`,
+			wantProcess:   "node",
+			wantArguments: []string{},
+		},
+		{
+			scenario:      "one argument",
+			env:           `fprocess=node index.js`,
+			wantProcess:   "node",
+			wantArguments: []string{"index.js"},
+		},
+		{
+			scenario:      "multiple items with flag and value",
+			env:           `fprocess=node index.js --this-is-a-flag=1234`,
+			wantProcess:   "node",
+			wantArguments: []string{"index.js", "--this-is-a-flag=1234"},
+		},
+		{
+			scenario:      "one flag without value",
+			env:           "fprocess=node --this-is-a-flag",
+			wantProcess:   "node",
+			wantArguments: []string{"--this-is-a-flag"},
+		},
 	}
 
-	process, args := actual.Process()
-	if process != wantProcess {
-		t.Errorf("Want process %v, got: %v", wantProcess, process)
-	}
+	for _, testCase := range cases {
+		t.Run(testCase.scenario, func(t *testing.T) {
+			actual, err := New([]string{testCase.env})
+			if err != nil {
+				t.Errorf("Expected no errors")
+			}
 
-	if len(args) != len(wantArguments) {
-		t.Errorf("Want %d args, got: %d args", len(wantArguments), len(args))
-		t.Fail()
-	}
+			process, args := actual.Process()
+			if process != testCase.wantProcess {
+				t.Errorf("Want process %v, got: %v", testCase.wantProcess, process)
+			}
 
-	for i, wantArg := range wantArguments {
-		if args[i] != wantArg {
-			t.Errorf("Want arg%d: %s, got: %s", i, wantArg, args[i])
-		}
-	}
-}
+			if len(args) != len(testCase.wantArguments) {
+				t.Errorf("Want %d args, got: %d args", len(testCase.wantArguments), len(args))
+				t.Fail()
+			} else {
 
-func Test_FunctionProcessWithFlagAndValue(t *testing.T) {
-	env := []string{
-		`fprocess=node --this-is-a-flag=1234`,
-	}
-	wantProcess := "node"
-	wantArguments := []string{"--this-is-a-flag=1234"}
+				for i, wantArg := range testCase.wantArguments {
+					if args[i] != wantArg {
+						t.Errorf("Want arg%d: %s, got: %s", i, wantArg, args[i])
+					}
+				}
 
-	actual, err := New(env)
-	if err != nil {
-		t.Errorf("Expected no errors")
-	}
-
-	process, args := actual.Process()
-	if process != wantProcess {
-		t.Errorf("Want process %v, got: %v", wantProcess, process)
-	}
-
-	if len(args) != len(wantArguments) {
-		t.Errorf("Want %d args, got: %d args", len(wantArguments), len(args))
-		t.Fail()
-	}
-
-	for i, wantArg := range wantArguments {
-		if args[i] != wantArg {
-			t.Errorf("Want arg%d: %s, got: %s", i, wantArg, args[i])
-		}
+			}
+		})
 	}
 }
 
