@@ -1,7 +1,9 @@
 package config
 
-import "testing"
-import "time"
+import (
+	"testing"
+	"time"
+)
 
 func TestNew(t *testing.T) {
 	defaults, err := New([]string{})
@@ -120,6 +122,93 @@ func Test_FunctionProcessAlternativeName(t *testing.T) {
 
 	if actual.FunctionProcess != "env" {
 		t.Errorf("Want %s. got: %s", "env", actual.FunctionProcess)
+	}
+}
+
+func Test_FunctionProcessWithTargetArgument(t *testing.T) {
+	env := []string{
+		`fprocess=node index.js`,
+	}
+	wantProcess := "node"
+	wantArguments := []string{"index.js"}
+
+	actual, err := New(env)
+	if err != nil {
+		t.Errorf("Expected no errors")
+	}
+
+	process, args := actual.Process()
+	if process != wantProcess {
+		t.Errorf("Want process %v, got: %v", wantProcess, process)
+	}
+
+	if len(args) != len(wantArguments) {
+		t.Errorf("Want %d args, got: %d args", len(wantArguments), len(args))
+		t.Fail()
+	}
+
+	for i, wantArg := range wantArguments {
+		if args[i] != wantArg {
+			t.Errorf("Want arg%d: %s, got: %s", i, wantArg, args[i])
+		}
+	}
+}
+
+func Test_FunctionProcessWithFlag(t *testing.T) {
+	env := []string{
+		`fprocess=node --this-is-a-flag`,
+	}
+	wantProcess := "node"
+	wantArguments := []string{"--this-is-a-flag"}
+
+	actual, err := New(env)
+	if err != nil {
+		t.Errorf("Expected no errors")
+	}
+
+	process, args := actual.Process()
+	if process != wantProcess {
+		t.Errorf("Want process %v, got: %v", wantProcess, process)
+	}
+
+	if len(args) != len(wantArguments) {
+		t.Errorf("Want %d args, got: %d args", len(wantArguments), len(args))
+		t.Fail()
+	}
+
+	for i, wantArg := range wantArguments {
+		if args[i] != wantArg {
+			t.Errorf("Want arg%d: %s, got: %s", i, wantArg, args[i])
+		}
+	}
+}
+
+func Test_FunctionProcessWithFlagAndValue(t *testing.T) {
+	env := []string{
+		`fprocess=node --this-is-a-flag=1234`,
+	}
+	wantProcess := "node"
+	wantArguments := []string{"--this-is-a-flag=1234"}
+
+	actual, err := New(env)
+	if err != nil {
+		t.Errorf("Expected no errors")
+	}
+
+	process, args := actual.Process()
+	if process != wantProcess {
+		t.Errorf("Want process %v, got: %v", wantProcess, process)
+	}
+
+	if len(args) != len(wantArguments) {
+		t.Errorf("Want %d args, got: %d args", len(wantArguments), len(args))
+		t.Fail()
+	}
+
+	for i, wantArg := range wantArguments {
+		if args[i] != wantArg {
+			t.Errorf("Want arg%d: %s, got: %s", i, wantArg, args[i])
+		}
 	}
 }
 
