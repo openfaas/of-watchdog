@@ -21,6 +21,7 @@ func (f *SerializingForkFunctionRunner) Run(req FunctionRequest, w http.Response
 	start := time.Now()
 	functionBytes, err := serializeFunction(req, f)
 	if err != nil {
+		w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(start).Seconds()))
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
 		return err
