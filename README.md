@@ -138,6 +138,8 @@ Vastly accelerated processing speed but requires a client library for each langu
 
 Environmental variables:
 
+> Note: timeouts should be specified as Golang durations i.e. `1m` or `20s`. 
+
 | Option                 | Implemented | Usage             |
 |------------------------|--------------|-------------------------------|
 | `function_process`     | Yes          | Process to execute a server in `http` mode or to be executed for each request in the other modes. For non `http` mode the process must accept input via STDIN and print output via STDOUT. Alias: `fprocess` |
