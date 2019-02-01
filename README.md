@@ -96,7 +96,7 @@ Reads entire request into memory from the HTTP request. At this point we seriali
 
 ### 3. Streaming fork (mode=streaming) - default.
 
-Forks a process per request and can deal with more data than is available memory capacity - i.e. 512mb VM can process multiple GB of video.
+Forks a process per request and can deal with a request body larger than memory capacity - i.e. 512mb VM can process multiple GB of video.
 
 HTTP headers cannot be sent after function starts executing due to input/output being hooked-up directly to response for streaming efficiencies. Response code is always 200 unless there is an issue forking the process. An error mid-flight will have to be picked up on the client. Multi-threaded.
 
