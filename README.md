@@ -143,7 +143,7 @@ Environmental variables:
 | `function_process`     | Yes          | Process to execute a server in `http` mode or to be executed for each request in the other modes. For non `http` mode the process must accept input via STDIN and print output via STDOUT. Alias: `fprocess` |
 | `read_timeout`         | Yes          | HTTP timeout for reading the payload from the client caller (in seconds) |
 | `write_timeout`        | Yes          | HTTP timeout for writing a response body from your function (in seconds)  |
-| `exec_timeout`         | Yes          | Exec timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0. |
+| `exec_timeout`         | Yes          | Exec timeout for process exec'd for each incoming request. Timeout is entered in unit of time. Example: 60s. Disabled if set to 0s. |
 | `port`                 | Yes          | Specify an alternative TCP port for testing. Default: `8080` |
 | `write_debug`          | No           | Write all output, error messages, and additional information to the logs. Default is `false`. |
 | `content_type`         | Yes          | Force a specific Content-Type response for all responses - only in forking/serializing modes. |
