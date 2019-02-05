@@ -88,9 +88,9 @@ Reads entire request into memory from the HTTP request. At this point we seriali
 
 * Stdout pipe is read into memory and then serialized or modified if necessary before being written back to the HTTP response.
 
-* HTTP headers can be set even after executing the function.
-
 * A static Content-type can be set ahead of time.
+
+* HTTP headers can be set even after executing the function (not implemented).
 
 * Exec timeout: supported.
 
