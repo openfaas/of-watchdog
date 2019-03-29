@@ -19,11 +19,11 @@ import (
 
 // HTTPFunctionRunner creates and maintains one process responsible for handling all calls
 type HTTPFunctionRunner struct {
-	ExecTimeout    time.Duration // ExecTimeout the maxmium duration or an upstream function call
-	ReadTimeout    time.Duration
-	WriteTimeout   time.Duration
-	Process        string
-	ProcessArgs    []string
+	ExecTimeout    time.Duration // ExecTimeout the maximum duration or an upstream function call
+	ReadTimeout    time.Duration // ReadTimeout for HTTP server
+	WriteTimeout   time.Duration // WriteTimeout for HTTP Server
+	Process        string        // Process to run as fprocess
+	ProcessArgs    []string      // ProcessArgs to pass to command
 	Command        *exec.Cmd
 	StdinPipe      io.WriteCloser
 	StdoutPipe     io.ReadCloser
