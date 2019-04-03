@@ -41,7 +41,7 @@ func main() {
 
 	log.Printf("OperationalMode: %s\n", config.WatchdogMode(watchdogConfig.OperationalMode))
 
-	http.HandleFunc("/", requestHandler)
+	http.Handle("/", requestHandler)
 	http.HandleFunc("/_/health", makeHealthHandler())
 
 	shutdownTimeout := watchdogConfig.HTTPWriteTimeout
@@ -120,7 +120,7 @@ func listenUntilShutdown(shutdownTimeout time.Duration, s *http.Server, suppress
 	<-idleConnsClosed
 }
 
-func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.HandlerFunc {
+func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.Handler {
 	var requestHandler http.HandlerFunc
 
 	switch watchdogConfig.OperationalMode {
@@ -141,7 +141,15 @@ func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.HandlerFunc 
 		break
 	}
 
-	return requestHandler
+	if watchdogConfig.ConcurrencyLimit > 0 {
+		cl := &concurrencyLimiter{
+			handler:          requestHandler,
+			concurrencyLimit: uint64(watchdogConfig.ConcurrencyLimit),
+		}
+		return cl
+	}
+
+	return http.HandlerFunc(requestHandler)
 }
 
 // createLockFile returns a path to a lock file and/or an error
@@ -345,4 +353,46 @@ func makeHealthHandler() func(http.ResponseWriter, *http.Request) {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	}
+}
+
+type concurrencyLimiter struct {
+	handler http.HandlerFunc
+	/*
+		We keep two counters here in order to make it so that we can know when a request has gone to completed
+		in the tests. We could wrap these up in a condvar, so there's no need to spinlock, but that seems overkill
+		for testing.
+
+		Otherwise, there's all sorts of futzing in order to make sure that the concurrency limiter handler
+		has completed
+		The math works on overflow:
+			var x, y uint64
+			x = (1 << 64 - 1)
+			y = (1 << 64 - 1)
+			x++
+			fmt.Println(x)
+			fmt.Println(y)
+			fmt.Println(x - y)
+		Prints:
+			0
+			18446744073709551615
+			1
+	*/
+	requestsStarted   uint64
+	requestsCompleted uint64
+
+	concurrencyLimit uint64
+}
+
+func (cl *concurrencyLimiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	requestsStarted := atomic.AddUint64(&cl.requestsStarted, 1)
+	completedRequested := atomic.LoadUint64(&cl.requestsCompleted)
+	if requestsStarted-completedRequested > cl.concurrencyLimit {
+		// This is a failure pathway, and we do not want to block on the write to finish
+		atomic.AddUint64(&cl.requestsCompleted, 1)
+		w.WriteHeader(429)
+		fmt.Fprintf(w, "Concurrent request limit exceeded. Max concurrent requests: %d\n", cl.concurrencyLimit)
+		return
+	}
+	cl.handler(w, r)
+	atomic.AddUint64(&cl.requestsCompleted, 1)
 }

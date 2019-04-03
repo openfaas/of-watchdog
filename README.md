@@ -152,6 +152,6 @@ Environmental variables:
 | `suppress_lock`        | Yes           | When set to `false` the watchdog will attempt to write a lockfile to /tmp/ for healthchecks. Default `false` |
 | `upstream_url`         | Yes          | `http` mode only - where to forward requests i.e. `127.0.0.1:5000` |
 | `buffer_http`     | Yes               | `http` mode only - buffers request body to memory before fowarding. Use if your upstream HTTP server does not accept `Transfer-Encoding: chunked` Default: `false` |
-
+| `concurrency_limit`    | Yes          | Limit the maximum number of requests in flight |
 
 > Note: the .lock file is implemented for health-checking, but cannot be disabled yet. You must create this file in /tmp/.

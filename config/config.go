@@ -25,6 +25,8 @@ type WatchdogConfig struct {
 	// to prevent transfer type of chunked encoding
 	// which some servers do not support.
 	BufferHTTPBody bool
+
+	ConcurrencyLimit int
 }
 
 // Process returns a string for the process and a slice for the arguments from the FunctionProcess.
@@ -77,6 +79,7 @@ func New(env []string) (WatchdogConfig, error) {
 		SuppressLock:     getBool(envMap, "suppress_lock"),
 		UpstreamURL:      upstreamURL,
 		BufferHTTPBody:   getBool(envMap, "buffer_http"),
+		ConcurrencyLimit: getInt(envMap, "concurrency_limit", 0),
 	}
 
 	if val := envMap["mode"]; len(val) > 0 {
