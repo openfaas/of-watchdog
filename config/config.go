@@ -25,6 +25,9 @@ type WatchdogConfig struct {
 	// to prevent transfer type of chunked encoding
 	// which some servers do not support.
 	BufferHTTPBody bool
+
+	// MetricsPort TCP port on which to serve HTTP Prometheus metrics
+	MetricsPort int
 }
 
 // Process returns a string for the process and a slice for the arguments from the FunctionProcess.
@@ -77,6 +80,7 @@ func New(env []string) (WatchdogConfig, error) {
 		SuppressLock:     getBool(envMap, "suppress_lock"),
 		UpstreamURL:      upstreamURL,
 		BufferHTTPBody:   getBool(envMap, "buffer_http"),
+		MetricsPort:      8081,
 	}
 
 	if val := envMap["mode"]; len(val) > 0 {
