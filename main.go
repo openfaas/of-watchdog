@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/openfaas-incubator/of-watchdog/metrics"
+
 	"github.com/openfaas-incubator/of-watchdog/config"
 	"github.com/openfaas-incubator/of-watchdog/executor"
 )
@@ -41,11 +43,19 @@ func main() {
 
 	log.Printf("OperationalMode: %s\n", config.WatchdogMode(watchdogConfig.OperationalMode))
 
-	http.HandleFunc("/", requestHandler)
+	httpMetrics := metrics.NewHttp()
+	http.HandleFunc("/", metrics.InstrumentHandler(requestHandler, httpMetrics))
+
 	http.HandleFunc("/_/health", makeHealthHandler())
 
-	shutdownTimeout := watchdogConfig.HTTPWriteTimeout
+	metricsServer := metrics.MetricsServer{}
+	metricsServer.Register(watchdogConfig.MetricsPort)
 
+	cancel := make(chan bool)
+
+	go metricsServer.Serve(cancel)
+
+	shutdownTimeout := watchdogConfig.HTTPWriteTimeout
 	s := &http.Server{
 		Addr:           fmt.Sprintf(":%d", watchdogConfig.TCPPort),
 		ReadTimeout:    watchdogConfig.HTTPReadTimeout,
@@ -54,7 +64,6 @@ func main() {
 	}
 
 	listenUntilShutdown(shutdownTimeout, s, watchdogConfig.SuppressLock)
-
 }
 
 func markUnhealthy() error {
