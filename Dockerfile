@@ -3,11 +3,13 @@ FROM golang:1.10
 RUN mkdir -p /go/src/github.com/openfaas-incubator/of-watchdog
 WORKDIR /go/src/github.com/openfaas-incubator/of-watchdog
 
-COPY vendor     vendor
-COPY config     config
-COPY executor   executor
-COPY metrics    metrics
-COPY main.go    .
+COPY vendor              vendor
+COPY config              config
+COPY executor            executor
+COPY metrics             metrics
+COPY concurrency-limiter concurrency-limiter
+COPY metrics             metrics
+COPY main.go             .
 
 # Run a gofmt and exclude all vendored code.
 RUN test -z "$(gofmt -l $(find . -type f -name '*.go' -not -path "./vendor/*"))"

@@ -28,6 +28,12 @@ type WatchdogConfig struct {
 
 	// MetricsPort TCP port on which to serve HTTP Prometheus metrics
 	MetricsPort int
+
+	// MaxInflight limits the number of simultaneous
+	// requests that the watchdog allows concurrently.
+	// Any request which exceeds this limit will
+	// have an immediate response of 429.
+	MaxInflight int
 }
 
 // Process returns a string for the process and a slice for the arguments from the FunctionProcess.
@@ -81,6 +87,7 @@ func New(env []string) (WatchdogConfig, error) {
 		UpstreamURL:      upstreamURL,
 		BufferHTTPBody:   getBool(envMap, "buffer_http"),
 		MetricsPort:      8081,
+		MaxInflight:      getInt(envMap, "max_inflight", 0),
 	}
 
 	if val := envMap["mode"]; len(val) > 0 {

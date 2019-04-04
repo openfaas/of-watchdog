@@ -15,10 +15,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/openfaas-incubator/of-watchdog/metrics"
-
+	limiter "github.com/openfaas-incubator/of-watchdog/concurrency-limiter"
 	"github.com/openfaas-incubator/of-watchdog/config"
 	"github.com/openfaas-incubator/of-watchdog/executor"
+	"github.com/openfaas-incubator/of-watchdog/metrics"
 )
 
 var (
@@ -45,7 +45,6 @@ func main() {
 
 	httpMetrics := metrics.NewHttp()
 	http.HandleFunc("/", metrics.InstrumentHandler(requestHandler, httpMetrics))
-
 	http.HandleFunc("/_/health", makeHealthHandler())
 
 	metricsServer := metrics.MetricsServer{}
@@ -129,7 +128,7 @@ func listenUntilShutdown(shutdownTimeout time.Duration, s *http.Server, suppress
 	<-idleConnsClosed
 }
 
-func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.HandlerFunc {
+func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.Handler {
 	var requestHandler http.HandlerFunc
 
 	switch watchdogConfig.OperationalMode {
@@ -148,6 +147,10 @@ func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.HandlerFunc 
 	default:
 		log.Panicf("unknown watchdog mode: %d", watchdogConfig.OperationalMode)
 		break
+	}
+
+	if watchdogConfig.MaxInflight > 0 {
+		return limiter.NewConcurrencyLimiter(requestHandler, watchdogConfig.MaxInflight)
 	}
 
 	return requestHandler
