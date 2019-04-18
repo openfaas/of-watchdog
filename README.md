@@ -45,7 +45,11 @@ A process is forked when the watchdog starts, we then forward any request incomi
 
 Pros:
 
-* Fastest option - high concurrency and throughput
+* Fastest option for high concurrency and throughput
+
+* Database connections can be persisted for the lifetime of the container
+
+* Files or models can be fetched and stored in `/tmp/` as a one-off initialization task and used for all requests after that
 
 * Does not require new/custom client libraries like afterburn but makes use of a long-running daemon such as Express.js for Node or Flask for Python
 
@@ -65,11 +69,9 @@ $ go build ; mode=http port=8081 fprocess="node expressjs-hello-world.js" upstre
 
 Cons:
 
-* Questionable as to whether this is actually "serverless"
-
-* Daemons such as express/flask/sinatra could be hard to configure or potentially unpredictable when used in this way
-
 * One more HTTP hop in the chain between the client and the function
+
+* Daemons such as express/flask/sinatra can be unpredictable when used in this way so many need additional configuration
 
 
 ### 2. Serializing fork (mode=serializing)
