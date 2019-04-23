@@ -7,7 +7,6 @@ COPY vendor              vendor
 COPY config              config
 COPY executor            executor
 COPY metrics             metrics
-COPY concurrency-limiter concurrency-limiter
 COPY metrics             metrics
 COPY main.go             .
 
