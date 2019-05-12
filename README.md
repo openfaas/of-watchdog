@@ -47,6 +47,8 @@ Pros:
 
 * Fastest option for high concurrency and throughput
 
+* More efficient concurrency and RAM usage vs. forking model
+
 * Database connections can be persisted for the lifetime of the container
 
 * Files or models can be fetched and stored in `/tmp/` as a one-off initialization task and used for all requests after that
@@ -73,6 +75,7 @@ Cons:
 
 * Daemons such as express/flask/sinatra can be unpredictable when used in this way so many need additional configuration
 
+* Additional memory may be occupied between invocations vs. forking model
 
 ### 2. Serializing fork (mode=serializing)
 
