@@ -9,6 +9,34 @@ addons:
 before_install: 
 script:
 - sh build.sh
+after_success:
+  - if [ -z $DOCKER_NS ] ; then
+      export DOCKER_NS=functions;
+      fi
+  - if [ ! -z "$TRAVIS_TAG" ] ; then
+      export DOCKER_CLI_EXPERIMENTAL=enabled
+
+      docker tag $DOCKER_NS/of-watchdog:latest-dev-darwin $DOCKER_NS/of-watchdog:$TRAVIS_TAG-darwin;
+      docker tag $DOCKER_NS/of-watchdog:latest-dev-armhf $DOCKER_NS/of-watchdog:$TRAVIS_TAG-armhf;
+      docker tag $DOCKER_NS/of-watchdog:latest-dev-arm64 $DOCKER_NS/of-watchdog:$TRAVIS_TAG-arm64;
+      docker tag $DOCKER_NS/of-watchdog:latest-dev-windows $DOCKER_NS/of-watchdog:$TRAVIS_TAG-windows;
+      docker tag $DOCKER_NS/of-watchdog:latest-dev-x86_64 $DOCKER_NS/of-watchdog:$TRAVIS_TAG-x86_64;
+      echo $DOCKER_PASSWORD | docker login -u=$DOCKER_USERNAME --password-stdin;
+      docker push $DOCKER_NS/of-watchdog:$TRAVIS_TAG-darwin;
+      docker push $DOCKER_NS/of-watchdog:$TRAVIS_TAG-armhf;
+      docker push $DOCKER_NS/of-watchdog:$TRAVIS_TAG-arm64;
+      docker push $DOCKER_NS/of-watchdog:$TRAVIS_TAG-windows; 
+      docker push $DOCKER_NS/of-watchdog:$TRAVIS_TAG-x86_64;
+
+      ./make_manifest.sh
+      docker push $DOCKER_NS/of-watchdog:$TRAVIS_TAG
+
+      echo $QUAY_PASSWORD | docker login -u=$QUAY_USERNAME --password-stdin quay.io;
+      docker push quay.io/$DOCKER_NS/of-watchdog:$TRAVIS_TAG-armhf;
+      docker push quay.io/$DOCKER_NS/of-watchdog:$TRAVIS_TAG-arm64;
+      docker push quay.io/$DOCKER_NS/of-watchdog:$TRAVIS_TAG-windows; 
+      docker push quay.io/$DOCKER_NS/of-watchdog:$TRAVIS_TAG-x86_64;
+      fi
 before_deploy:
   - ./ci/hashgen.sh
 deploy:
@@ -28,4 +56,4 @@ deploy:
   - "./of-watchdog.exe.sha256"
   skip_cleanup: true
   on:
-    tags: true
+    tags: true  
