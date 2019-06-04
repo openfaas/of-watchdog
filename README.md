@@ -1,5 +1,9 @@
 # of-watchdog
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/openfaas-incubator/of-watchdog)](https://goreportcard.com/report/github.com/openfaas-incubator/of-watchdog) [![Build Status](https://travis-ci.org/openfaas-incubator/of-watchdog.svg?branch=master)](https://travis-ci.org/openfaas-incubator/of-watchdog)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![OpenFaaS](https://img.shields.io/badge/openfaas-serverless-blue.svg)](https://www.openfaas.com)
+
 The `of-watchdog` is a new version of the OpenFaaS watchdog which provides the original STDIO mode from the Classic Watchdog along with a new HTTP `mode`.
 
 See also: [Classic Watchdog](https://github.com/openfaas/faas/tree/master/watchdog)
