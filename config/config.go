@@ -118,8 +118,15 @@ func mapEnv(env []string) map[string]string {
 func getDuration(env map[string]string, key string, defaultValue time.Duration) time.Duration {
 	result := defaultValue
 	if val, exists := env[key]; exists {
-		parsed, _ := time.ParseDuration(val)
-		result = parsed
+		if len(val) > 0 {
+			parsed, err := strconv.Atoi(val)
+			if err == nil && parsed >= 0 {
+				result = time.Duration(parsed) * time.Second
+			} else {
+				parsed, _ := time.ParseDuration(val)
+				result = parsed
+			}
+		}
 
 	}
 

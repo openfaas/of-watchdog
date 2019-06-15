@@ -238,6 +238,13 @@ func Test_Timeouts(t *testing.T) {
 			execTimeout:  time.Second * 5,
 			env:          []string{"exec_timeout=5s"},
 		},
+		{
+			name:         "Integer timeout",
+			readTimeout:  time.Second * 5,
+			writeTimeout: time.Second * 5,
+			execTimeout:  time.Second * 5,
+			env:          []string{"read_timeout=5", "write_timeout=5", "exec_timeout=5"},
+		},
 	}
 
 	for _, testCase := range cases {
