@@ -107,6 +107,8 @@ func listenUntilShutdown(shutdownTimeout time.Duration, s *http.Server, suppress
 
 	// Run the HTTP server in a separate go-routine.
 	go func() {
+		log.Printf("HTTP server. Listen: %v", s.Addr)
+
 		if err := s.ListenAndServe(); err != http.ErrServerClosed {
 			log.Printf("Error ListenAndServe: %v", err)
 			close(idleConnsClosed)
