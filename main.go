@@ -62,6 +62,12 @@ func main() {
 		MaxHeaderBytes: 1 << 20, // Max header of 1MB
 	}
 
+	log.Printf("Timeouts: read: %s, write: %s hard: %s.\n",
+		watchdogConfig.HTTPReadTimeout,
+		watchdogConfig.HTTPWriteTimeout,
+		watchdogConfig.ExecTimeout)
+	log.Printf("Listening on port: %d\n", watchdogConfig.TCPPort)
+
 	listenUntilShutdown(shutdownTimeout, s, watchdogConfig.SuppressLock)
 }
 
@@ -107,8 +113,6 @@ func listenUntilShutdown(shutdownTimeout time.Duration, s *http.Server, suppress
 
 	// Run the HTTP server in a separate go-routine.
 	go func() {
-		log.Printf("HTTP server. Listen: %v", s.Addr)
-
 		if err := s.ListenAndServe(); err != http.ErrServerClosed {
 			log.Printf("Error ListenAndServe: %v", err)
 			close(idleConnsClosed)
