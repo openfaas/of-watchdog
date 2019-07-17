@@ -8,11 +8,13 @@ docker manifest create $USR/of-watchdog:$TAG \
   $USR/of-watchdog:$TAG-x86_64 \
   $USR/of-watchdog:$TAG-armhf \
   $USR/of-watchdog:$TAG-arm64 \
+  $USR/of-watchdog:$TAG-ppc64le \
   $USR/of-watchdog:$TAG-windows
 
 docker manifest annotate $USR/of-watchdog:$TAG --arch arm $USR/of-watchdog:$TAG-darwin
 docker manifest annotate $USR/of-watchdog:$TAG --arch arm $USR/of-watchdog:$TAG-armhf
 docker manifest annotate $USR/of-watchdog:$TAG --arch arm64 $USR/of-watchdog:$TAG-arm64
+docker manifest annotate $USR/of-watchdog:$TAG --arch ppc64le $USR/of-watchdog:$TAG-ppc64le
 docker manifest annotate $USR/of-watchdog:$TAG --os windows $USR/of-watchdog:$TAG-windows
 
 docker manifest push $USR/of-watchdog:$TAG
