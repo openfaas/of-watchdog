@@ -27,7 +27,6 @@ type HTTPFunctionRunner struct {
 	Command        *exec.Cmd
 	StdinPipe      io.WriteCloser
 	StdoutPipe     io.ReadCloser
-	Stderr         io.Writer
 	Client         *http.Client
 	UpstreamURL    *url.URL
 	BufferHTTPBody bool
@@ -54,35 +53,8 @@ func (f *HTTPFunctionRunner) Start() error {
 	errPipe, _ := cmd.StderrPipe()
 
 	// Prints stderr to console and is picked up by container logging driver.
-	go func() {
-		log.Println("Started logging stderr from function.")
-		for {
-			errBuff := make([]byte, 256)
-
-			_, err := errPipe.Read(errBuff)
-			if err != nil {
-				log.Fatalf("Error reading stderr: %s", err)
-
-			} else {
-				log.Printf("stderr: %s", errBuff)
-			}
-		}
-	}()
-
-	go func() {
-		log.Println("Started logging stdout from function.")
-		for {
-			errBuff := make([]byte, 256)
-
-			_, err := f.StdoutPipe.Read(errBuff)
-			if err != nil {
-				log.Fatalf("Error reading stdout: %s", err)
-
-			} else {
-				log.Printf("stdout: %s", errBuff)
-			}
-		}
-	}()
+	bindLoggingPipe("stderr", errPipe)
+	bindLoggingPipe("stdout", f.StdoutPipe)
 
 	f.Client = makeProxyClient(f.ExecTimeout)
 
@@ -95,7 +67,15 @@ func (f *HTTPFunctionRunner) Start() error {
 
 	}()
 
-	return cmd.Start()
+	err := cmd.Start()
+	go func() {
+		err := cmd.Wait()
+		if err != nil {
+			log.Fatalf("Forked function has terminated: %s", err.Error())
+		}
+	}()
+
+	return err
 }
 
 // Run a function with a long-running process with a HTTP protocol for communication

@@ -42,20 +42,7 @@ func (f *AfterBurnFunctionRunner) Start() error {
 	errPipe, _ := cmd.StderrPipe()
 
 	// Prints stderr to console and is picked up by container logging driver.
-	go func() {
-		log.Println("Started logging stderr from function.")
-		for {
-			errBuff := make([]byte, 256)
-
-			_, err := errPipe.Read(errBuff)
-			if err != nil {
-				log.Printf("Error reading stderr: %s", err)
-
-			} else {
-				log.Printf("stderr: %s", errBuff)
-			}
-		}
-	}()
+	bindLoggingPipe("stderr", errPipe)
 
 	return cmd.Start()
 }
