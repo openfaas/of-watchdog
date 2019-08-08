@@ -65,24 +65,7 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 	errPipe, _ := cmd.StderrPipe()
 
 	// Prints stderr to console and is picked up by container logging driver.
-	go func() {
-		log.Println("Started logging stderr from function.")
-		for {
-			errBuff := make([]byte, 256)
-
-			n, err := errPipe.Read(errBuff)
-			if err != nil {
-				if err != io.EOF {
-					log.Printf("Error reading stderr: %s", err)
-				}
-				break
-			} else {
-				if n > 0 {
-					log.Printf("stderr: %s", errBuff)
-				}
-			}
-		}
-	}()
+	bindLoggingPipe("stderr", errPipe)
 
 	startErr := cmd.Start()
 
