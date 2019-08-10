@@ -19,7 +19,7 @@ See also: [Classic Watchdog](https://github.com/openfaas/faas/tree/master/watchd
 
 History/context: the original watchdog supported mode the Serializing fork mode only and Afterburn was available for testing via a pull request.
 
-When the of-watchdog is complete this version will support four modes as listed below. We may consolidate or remove some of these modes before going to 1.0 so please consider modes 2-4 experimental.
+When the of-watchdog is complete this version will support five modes as listed below. We may consolidate or remove some of these modes before going to 1.0 so please consider modes 2-4 experimental.
 
 ### 1. HTTP (mode=http)
 
@@ -143,6 +143,10 @@ Vastly accelerated processing speed but requires a client library for each langu
 
 * Exec timeout: not supported.
 
+### 5. Static (mode=static)
+
+This mode starts an HTTP file server for serving static content found at the directory specified by `static_path`.
+
 ## Configuration
 
 Environmental variables:
@@ -152,6 +156,7 @@ Environmental variables:
 | Option                 | Implemented | Usage             |
 |------------------------|--------------|-------------------------------|
 | `function_process`     | Yes          | Process to execute a server in `http` mode or to be executed for each request in the other modes. For non `http` mode the process must accept input via STDIN and print output via STDOUT. Alias: `fprocess` |
+| `static_path`          | Yes          | Absolute or relative path to the directory that will be served if `mode="static"` |
 | `read_timeout`         | Yes          | HTTP timeout for reading the payload from the client caller (in seconds) |
 | `write_timeout`        | Yes          | HTTP timeout for writing a response body from your function (in seconds)  |
 | `exec_timeout`         | Yes          | Exec timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0. |

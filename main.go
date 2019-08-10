@@ -28,13 +28,9 @@ var (
 func main() {
 	atomic.StoreInt32(&acceptingConnections, 0)
 
-	watchdogConfig, configErr := config.New(os.Environ())
-	if configErr != nil {
-		fmt.Fprintf(os.Stderr, configErr.Error())
-		os.Exit(-1)
-	}
+	watchdogConfig := config.New(os.Environ())
 
-	if len(watchdogConfig.FunctionProcess) == 0 {
+	if len(watchdogConfig.FunctionProcess) == 0 && watchdogConfig.OperationalMode != config.ModeStatic {
 		fmt.Fprintf(os.Stderr, "Provide a \"function_process\" or \"fprocess\" environmental variable for your function.\n")
 		os.Exit(-1)
 	}
@@ -150,6 +146,8 @@ func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.Handler {
 	case config.ModeHTTP:
 		requestHandler = makeHTTPRequestHandler(watchdogConfig)
 		break
+	case config.ModeStatic:
+		requestHandler = makeStaticRequestHandler(watchdogConfig)
 	default:
 		log.Panicf("unknown watchdog mode: %d", watchdogConfig.OperationalMode)
 		break
@@ -336,6 +334,15 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 		}
 
 	}
+}
+
+func makeStaticRequestHandler(watchdogConfig config.WatchdogConfig) http.HandlerFunc {
+	if watchdogConfig.StaticPath == "" {
+		log.Fatal(`For mode=static you must specify the "static_path" to serve`)
+	}
+
+	log.Printf("Serving files at %s", watchdogConfig.StaticPath)
+	return http.FileServer(http.Dir(watchdogConfig.StaticPath)).ServeHTTP
 }
 
 func lockFilePresent() bool {
