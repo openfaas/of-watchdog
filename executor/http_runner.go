@@ -28,6 +28,7 @@ type HTTPFunctionRunner struct {
 	StdinPipe      io.WriteCloser
 	StdoutPipe     io.ReadCloser
 	Stderr         io.Writer
+	LogBufferSize  int
 	Client         *http.Client
 	UpstreamURL    *url.URL
 	BufferHTTPBody bool
@@ -57,14 +58,14 @@ func (f *HTTPFunctionRunner) Start() error {
 	go func() {
 		log.Println("Started logging stderr from function.")
 		for {
-			errBuff := make([]byte, 256)
+			errBuff := make([]byte, f.LogBufferSize)
 
 			_, err := errPipe.Read(errBuff)
 			if err != nil {
 				log.Fatalf("Error reading stderr: %s", err)
 
 			} else {
-				log.Printf("stderr: %s", errBuff)
+				fmt.Fprintf(os.Stderr, "%s", errBuff)
 			}
 		}
 	}()
@@ -72,14 +73,14 @@ func (f *HTTPFunctionRunner) Start() error {
 	go func() {
 		log.Println("Started logging stdout from function.")
 		for {
-			errBuff := make([]byte, 256)
+			errBuff := make([]byte, f.LogBufferSize)
 
 			_, err := f.StdoutPipe.Read(errBuff)
 			if err != nil {
 				log.Fatalf("Error reading stdout: %s", err)
 
 			} else {
-				log.Printf("stdout: %s", errBuff)
+				fmt.Fprintf(os.Stdout, "%s", errBuff)
 			}
 		}
 	}()

@@ -167,5 +167,6 @@ Environmental variables:
 | `upstream_url`         | Yes          | `http` mode only - where to forward requests i.e. `127.0.0.1:5000` |
 | `buffer_http`     | Yes               | `http` mode only - buffers request body to memory before fowarding. Use if your upstream HTTP server does not accept `Transfer-Encoding: chunked` Default: `false` |
 | `max_inflight`    | Yes          | Limit the maximum number of requests in flight |
+| `log_buffer_size` | Yes          | Size in bytes of the buffer for reading log messages from the function_process |
 
 > Note: the .lock file is implemented for health-checking, but cannot be disabled yet. You must create this file in /tmp/.

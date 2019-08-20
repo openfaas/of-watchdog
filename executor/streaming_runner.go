@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"os/exec"
 	"time"
 )
@@ -26,7 +27,8 @@ type FunctionRequest struct {
 
 // ForkFunctionRunner forks a process for each invocation
 type ForkFunctionRunner struct {
-	ExecTimeout time.Duration
+	ExecTimeout   time.Duration
+	LogBufferSize int
 }
 
 // Run run a fork for each invocation
@@ -68,7 +70,7 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 	go func() {
 		log.Println("Started logging stderr from function.")
 		for {
-			errBuff := make([]byte, 256)
+			errBuff := make([]byte, f.LogBufferSize)
 
 			n, err := errPipe.Read(errBuff)
 			if err != nil {
@@ -78,7 +80,7 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 				break
 			} else {
 				if n > 0 {
-					log.Printf("stderr: %s", errBuff)
+					fmt.Fprintf(os.Stderr, "%s", errBuff)
 				}
 			}
 		}

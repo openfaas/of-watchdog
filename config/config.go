@@ -22,6 +22,10 @@ type WatchdogConfig struct {
 	UpstreamURL      string
 	StaticPath       string
 
+	// LogBufferSize is size of data that should be read from the logging
+	// pipes of the wrapped fprocess.
+	LogBufferSize int
+
 	// BufferHTTPBody buffers the HTTP body in memory
 	// to prevent transfer type of chunked encoding
 	// which some servers do not support.
@@ -92,6 +96,7 @@ func New(env []string) WatchdogConfig {
 		ContentType:      contentType,
 		SuppressLock:     getBool(envMap, "suppress_lock"),
 		UpstreamURL:      upstreamURL,
+		LogBufferSize:    getInt(envMap, "log_buffer_size", 16*1024),
 		BufferHTTPBody:   getBool(envMap, "buffer_http"),
 		MetricsPort:      8081,
 		MaxInflight:      getInt(envMap, "max_inflight", 0),

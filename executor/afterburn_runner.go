@@ -2,23 +2,26 @@ package executor
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"sync"
 )
 
 // AfterBurnFunctionRunner creates and maintains one process responsible for handling all calls
 type AfterBurnFunctionRunner struct {
-	Process     string
-	ProcessArgs []string
-	Command     *exec.Cmd
-	StdinPipe   io.WriteCloser
-	StdoutPipe  io.ReadCloser
-	Stderr      io.Writer
-	Mutex       sync.Mutex
+	Process       string
+	ProcessArgs   []string
+	Command       *exec.Cmd
+	StdinPipe     io.WriteCloser
+	StdoutPipe    io.ReadCloser
+	Stderr        io.Writer
+	LogBufferSize int
+	Mutex         sync.Mutex
 }
 
 // Start forks the process used for processing incoming requests
@@ -45,14 +48,14 @@ func (f *AfterBurnFunctionRunner) Start() error {
 	go func() {
 		log.Println("Started logging stderr from function.")
 		for {
-			errBuff := make([]byte, 256)
+			errBuff := make([]byte, f.LogBufferSize)
 
 			_, err := errPipe.Read(errBuff)
 			if err != nil {
 				log.Printf("Error reading stderr: %s", err)
 
 			} else {
-				log.Printf("stderr: %s", errBuff)
+				fmt.Fprintf(os.Stderr, "%s", errBuff)
 			}
 		}
 	}()

@@ -176,8 +176,9 @@ func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http
 
 	commandName, arguments := watchdogConfig.Process()
 	functionInvoker := executor.AfterBurnFunctionRunner{
-		Process:     commandName,
-		ProcessArgs: arguments,
+		Process:       commandName,
+		ProcessArgs:   arguments,
+		LogBufferSize: watchdogConfig.LogBufferSize,
 	}
 
 	log.Printf("Forking %s %s\n", commandName, arguments)
@@ -238,7 +239,8 @@ func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig) fun
 
 func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
 	functionInvoker := executor.ForkFunctionRunner{
-		ExecTimeout: watchdogConfig.ExecTimeout,
+		ExecTimeout:   watchdogConfig.ExecTimeout,
+		LogBufferSize: watchdogConfig.LogBufferSize,
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -298,6 +300,7 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 		Process:        commandName,
 		ProcessArgs:    arguments,
 		BufferHTTPBody: watchdogConfig.BufferHTTPBody,
+		LogBufferSize:  watchdogConfig.LogBufferSize,
 	}
 
 	if len(watchdogConfig.UpstreamURL) == 0 {
