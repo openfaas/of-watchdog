@@ -80,7 +80,7 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 				break
 			} else {
 				if n > 0 {
-					fmt.Fprintf(os.Stderr, "%s", errBuff)
+					fmt.Fprintf(os.Stderr, "%s", string(errBuff[:n]))
 				}
 			}
 		}

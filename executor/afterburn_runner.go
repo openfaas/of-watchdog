@@ -50,12 +50,12 @@ func (f *AfterBurnFunctionRunner) Start() error {
 		for {
 			errBuff := make([]byte, f.LogBufferSize)
 
-			_, err := errPipe.Read(errBuff)
+			n, err := errPipe.Read(errBuff)
 			if err != nil {
 				log.Printf("Error reading stderr: %s", err)
 
 			} else {
-				fmt.Fprintf(os.Stderr, "%s", errBuff)
+				fmt.Fprintf(os.Stderr, "%s", string(errBuff[:n]))
 			}
 		}
 	}()

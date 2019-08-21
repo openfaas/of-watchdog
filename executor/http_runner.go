@@ -60,12 +60,12 @@ func (f *HTTPFunctionRunner) Start() error {
 		for {
 			errBuff := make([]byte, f.LogBufferSize)
 
-			_, err := errPipe.Read(errBuff)
+			n, err := errPipe.Read(errBuff)
 			if err != nil {
 				log.Fatalf("Error reading stderr: %s", err)
 
 			} else {
-				fmt.Fprintf(os.Stderr, "%s", errBuff)
+				fmt.Fprintf(os.Stderr, "%s", string(errBuff[:n]))
 			}
 		}
 	}()
@@ -75,12 +75,12 @@ func (f *HTTPFunctionRunner) Start() error {
 		for {
 			errBuff := make([]byte, f.LogBufferSize)
 
-			_, err := f.StdoutPipe.Read(errBuff)
+			n, err := f.StdoutPipe.Read(errBuff)
 			if err != nil {
 				log.Fatalf("Error reading stdout: %s", err)
 
 			} else {
-				fmt.Fprintf(os.Stdout, "%s", errBuff)
+				fmt.Fprintf(os.Stdout, "%s", string(errBuff[:n]))
 			}
 		}
 	}()
