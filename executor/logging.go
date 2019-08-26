@@ -7,14 +7,15 @@ import (
 )
 
 // bindLoggingPipe spawns a goroutine for passing through logging of the given output pipe.
-func bindLoggingPipe(name string, output io.Reader) {
+func bindLoggingPipe(name string, pipe io.Reader, output io.Writer) {
 	log.Printf("Started logging %s from function.", name)
 
-	scanner := bufio.NewScanner(output)
+	scanner := bufio.NewScanner(pipe)
+	logger := log.New(output, log.Prefix(), log.Flags())
 
 	go func() {
 		for scanner.Scan() {
-			log.Printf("%s: %s", name, scanner.Text())
+			logger.Println(scanner.Text())
 		}
 		if err := scanner.Err(); err != nil {
 			log.Printf("Error scanning %s: %s", name, err.Error())

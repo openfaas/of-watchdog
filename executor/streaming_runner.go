@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"os/exec"
 	"time"
 )
@@ -65,7 +66,7 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 	errPipe, _ := cmd.StderrPipe()
 
 	// Prints stderr to console and is picked up by container logging driver.
-	bindLoggingPipe("stderr", errPipe)
+	bindLoggingPipe("stderr", errPipe, os.Stderr)
 
 	startErr := cmd.Start()
 
