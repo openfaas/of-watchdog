@@ -52,9 +52,9 @@ func (f *HTTPFunctionRunner) Start() error {
 
 	errPipe, _ := cmd.StderrPipe()
 
-	// Prints stderr to console and is picked up by container logging driver.
-	bindLoggingPipe("stderr", errPipe)
-	bindLoggingPipe("stdout", f.StdoutPipe)
+	// Logs lines from stderr and stdout to the stderr and stdout of this process
+	bindLoggingPipe("stderr", errPipe, os.Stderr)
+	bindLoggingPipe("stdout", f.StdoutPipe, os.Stdout)
 
 	f.Client = makeProxyClient(f.ExecTimeout)
 

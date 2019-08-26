@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"sync"
 )
@@ -42,7 +43,7 @@ func (f *AfterBurnFunctionRunner) Start() error {
 	errPipe, _ := cmd.StderrPipe()
 
 	// Prints stderr to console and is picked up by container logging driver.
-	bindLoggingPipe("stderr", errPipe)
+	bindLoggingPipe("stderr", errPipe, os.Stderr)
 
 	return cmd.Start()
 }
