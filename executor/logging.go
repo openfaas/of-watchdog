@@ -15,7 +15,7 @@ func bindLoggingPipe(name string, pipe io.Reader, output io.Writer) {
 
 	go func() {
 		for scanner.Scan() {
-			logger.Println(scanner.Text())
+			logger.Printf("%s: %s", name, scanner.Text())
 		}
 		if err := scanner.Err(); err != nil {
 			log.Printf("Error scanning %s: %s", name, err.Error())
