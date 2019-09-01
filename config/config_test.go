@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -18,6 +19,7 @@ func Test_OperationalMode_Default(t *testing.T) {
 		t.Errorf("Want %s. got: %s", WatchdogMode(ModeStreaming), WatchdogMode(defaults.OperationalMode))
 	}
 }
+
 func Test_BufferHttpModeDefaultsToFalse(t *testing.T) {
 	env := []string{}
 
@@ -28,9 +30,35 @@ func Test_BufferHttpModeDefaultsToFalse(t *testing.T) {
 	}
 }
 
+func Test_UpstreamURL(t *testing.T) {
+	urlVal := "http://127.0.0.1:8082"
+	env := []string{
+		fmt.Sprintf("upstream_url=%s", urlVal),
+	}
+
+	actual := New(env)
+	want := urlVal
+	if actual.UpstreamURL != want {
+		t.Errorf("Want %v. got: %v", want, actual.UpstreamURL)
+	}
+}
+
+func Test_UpstreamURLVerbose(t *testing.T) {
+	urlVal := "http://127.0.0.1:8082"
+	env := []string{
+		fmt.Sprintf("http_upstream_url=%s", urlVal),
+	}
+
+	actual := New(env)
+	want := urlVal
+	if actual.UpstreamURL != want {
+		t.Errorf("Want %v. got: %v", want, actual.UpstreamURL)
+	}
+}
+
 func Test_BufferHttpMode_CanBeSetToTrue(t *testing.T) {
 	env := []string{
-		"buffer_http=true",
+		"http_buffer_req_body=true",
 	}
 
 	actual := New(env)

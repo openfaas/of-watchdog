@@ -301,7 +301,7 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 	}
 
 	if len(watchdogConfig.UpstreamURL) == 0 {
-		log.Fatal(`For mode=http you must specify a valid URL for "upstream_url"`)
+		log.Fatal(`For "mode=http" you must specify a valid URL for "http_upstream_url"`)
 	}
 
 	urlValue, upstreamURLErr := url.Parse(watchdogConfig.UpstreamURL)
