@@ -153,19 +153,21 @@ Environmental variables:
 
 > Note: timeouts should be specified as Golang durations i.e. `1m` or `20s`. 
 
-| Option                 | Implemented | Usage             |
-|------------------------|--------------|-------------------------------|
-| `function_process`     | Yes          | Process to execute a server in `http` mode or to be executed for each request in the other modes. For non `http` mode the process must accept input via STDIN and print output via STDOUT. Alias: `fprocess` |
-| `static_path`          | Yes          | Absolute or relative path to the directory that will be served if `mode="static"` |
-| `read_timeout`         | Yes          | HTTP timeout for reading the payload from the client caller (in seconds) |
-| `write_timeout`        | Yes          | HTTP timeout for writing a response body from your function (in seconds)  |
-| `exec_timeout`         | Yes          | Exec timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0. |
-| `port`                 | Yes          | Specify an alternative TCP port for testing. Default: `8080` |
-| `write_debug`          | No           | Write all output, error messages, and additional information to the logs. Default is `false`. |
-| `content_type`         | Yes          | Force a specific Content-Type response for all responses - only in forking/serializing modes. |
-| `suppress_lock`        | Yes           | When set to `false` the watchdog will attempt to write a lockfile to /tmp/ for healthchecks. Default `false` |
-| `upstream_url`         | Yes          | `http` mode only - where to forward requests i.e. `127.0.0.1:5000` |
-| `buffer_http`     | Yes               | `http` mode only - buffers request body to memory before forwarding. Use if your upstream HTTP server does not accept `Transfer-Encoding: chunked` Default: `false` |
-| `max_inflight`    | Yes          | Limit the maximum number of requests in flight |
+| Option                      | Implemented  | Usage                         |
+|-----------------------------|--------------|-------------------------------|
+| `function_process`          | Yes          | Process to execute a server in `http` mode or to be executed for each request in the other modes. For non `http` mode the process must accept input via STDIN and print output via STDOUT. Alias: `fprocess` |
+| `static_path`               | Yes          | Absolute or relative path to the directory that will be served if `mode="static"` |
+| `read_timeout`              | Yes          | HTTP timeout for reading the payload from the client caller (in seconds) |
+| `write_timeout`             | Yes          | HTTP timeout for writing a response body from your function (in seconds)  |
+| `exec_timeout`              | Yes          | Exec timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0. |
+| `port`                      | Yes          | Specify an alternative TCP port for testing. Default: `8080` |
+| `write_debug`               | No           | Write all output, error messages, and additional information to the logs. Default is `false`. |
+| `content_type`              | Yes          | Force a specific Content-Type response for all responses - only in forking/serializing modes. |
+| `suppress_lock`             | Yes          | When set to `false` the watchdog will attempt to write a lockfile to /tmp/ for healthchecks. Default `false` |
+| `http_upstream_url`         | Yes          | `http` mode only - where to forward requests i.e. `127.0.0.1:5000` |
+| `upstream_url`              | Yes          | alias for `http_upstream_url` |
+| `http_buffer_req_body`      | Yes          | `http` mode only - buffers request body in memory before forwarding upstream to your template's `upstream_url`. Use if your upstream HTTP server does not accept `Transfer-Encoding: chunked` Default: `false` |
+| `buffer_http`               | Yes          | deprecated alias for `http_buffer_req_body`, will be removed in future version  |
+| `max_inflight`              | Yes          | Limit the maximum number of requests in flight |
 
 > Note: the .lock file is implemented for health-checking, but cannot be disabled yet. You must create this file in /tmp/.
