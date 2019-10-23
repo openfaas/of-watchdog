@@ -117,7 +117,7 @@ HTTP headers cannot be sent after function starts executing due to input/output 
 
 ### 4. Afterburn (mode=afterburn)
 
-### 4.1 Status
+#### 4.1 Status
 
 Afterburn should be considered for deprecation in favour of the HTTP mode.
 
@@ -129,7 +129,7 @@ https://github.com/openfaas/python-afterburn
 
 https://github.com/openfaas/java-afterburn
 
-### 4.2 Details
+#### 4.2 Details
 
 Uses a single process for all requests, if that request dies the container dies.
 
