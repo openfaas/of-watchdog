@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -26,13 +27,24 @@ var (
 )
 
 func main() {
+	flag.Parse()
+
+	switch flag.Arg(0) {
+	case "healthcheck":
+		if lockFilePresent() {
+			os.Exit(0)
+		}
+
+		os.Exit(1)
+	}
+
 	atomic.StoreInt32(&acceptingConnections, 0)
 
 	watchdogConfig := config.New(os.Environ())
 
 	if len(watchdogConfig.FunctionProcess) == 0 && watchdogConfig.OperationalMode != config.ModeStatic {
 		fmt.Fprintf(os.Stderr, "Provide a \"function_process\" or \"fprocess\" environmental variable for your function.\n")
-		os.Exit(-1)
+		os.Exit(1)
 	}
 
 	requestHandler := buildRequestHandler(watchdogConfig)
