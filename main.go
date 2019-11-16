@@ -177,11 +177,19 @@ func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.Handler {
 func createLockFile() (string, error) {
 	path := filepath.Join(os.TempDir(), ".lock")
 	log.Printf("Writing lock-file to: %s\n", path)
+
+	mkdirErr := os.MkdirAll(os.TempDir(), os.ModePerm)
+	if mkdirErr != nil {
+		return path, mkdirErr
+	}
+
 	writeErr := ioutil.WriteFile(path, []byte{}, 0660)
+	if writeErr != nil {
+		return path, writeErr
+	}
 
 	atomic.StoreInt32(&acceptingConnections, 1)
-
-	return path, writeErr
+	return path, nil
 }
 
 func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
