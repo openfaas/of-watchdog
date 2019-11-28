@@ -27,14 +27,21 @@ var (
 )
 
 func main() {
+	var runHealthcheck bool
+
+	flag.BoolVar(&runHealthcheck,
+		"run-healthcheck",
+		false,
+		"Check for the a lock-file, when using an exec healthcheck. Exit 0 for present, non-zero when not found.")
+
 	flag.Parse()
 
-	switch flag.Arg(0) {
-	case "healthcheck":
+	if runHealthcheck {
 		if lockFilePresent() {
 			os.Exit(0)
 		}
 
+		fmt.Fprintf(os.Stderr, "unable to find lock file.\n")
 		os.Exit(1)
 	}
 
@@ -367,6 +374,7 @@ func makeStaticRequestHandler(watchdogConfig config.WatchdogConfig) http.Handler
 
 func lockFilePresent() bool {
 	path := filepath.Join(os.TempDir(), ".lock")
+
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return false
 	}
