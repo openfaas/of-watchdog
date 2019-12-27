@@ -1,6 +1,9 @@
-FROM golang:1.11
+FROM golang:1.13
 
-RUN mkdir -p /go/src/github.com/openfaas-incubator/of-watchdog
+ARG CGO_ENABLED=0
+ARG GO111MODULE="off"
+ARG GOPROXY=""
+
 WORKDIR /go/src/github.com/openfaas-incubator/of-watchdog
 
 COPY vendor              vendor
