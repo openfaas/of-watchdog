@@ -315,6 +315,10 @@ func getEnvironment(r *http.Request) []string {
 		envs = append(envs, fmt.Sprintf("Http_Path=%s", r.URL.Path))
 	}
 
+	if len(r.TransferEncoding) > 0 {
+		envs = append(envs, fmt.Sprintf("Http_Transfer_Encoding=%s", r.TransferEncoding[0]))
+	}
+
 	return envs
 }
 
