@@ -262,3 +262,88 @@ func Test_Timeouts(t *testing.T) {
 	}
 
 }
+
+func Test_TestNonDurationValue_getDuration(t *testing.T) {
+	want := 10 * time.Second
+	env := map[string]string{"time": "10"}
+	got := getDuration(env, "time", 5*time.Second)
+
+	if want != got {
+		t.Error(fmt.Sprintf("want: %q got: %q", want, got))
+	}
+}
+
+func Test_TestDurationValue_getDuration(t *testing.T) {
+	want := 10 * time.Second
+	env := map[string]string{"time": "10s"}
+	got := getDuration(env, "time", 5*time.Second)
+
+	if want != got {
+		t.Error(fmt.Sprintf("want: %q got: %q", want, got))
+	}
+}
+func Test_TestNonParsableValue_getDuration(t *testing.T) {
+	want := 5 * time.Second
+	env := map[string]string{"time": "this is bad"}
+	got := getDuration(env, "time", 5*time.Second)
+
+	if want != got {
+		t.Error(fmt.Sprintf("want: %q got: %q", want, got))
+	}
+}
+
+func Test_TestMissingMapValue_getDuration(t *testing.T) {
+	want := 5 * time.Second
+	env := map[string]string{"time_is_missing": "10"}
+	got := getDuration(env, "time", 5*time.Second)
+
+	if want != got {
+		t.Error(fmt.Sprintf("want: %q got: %q", want, got))
+	}
+}
+
+func Test_IntAsString_parseIntOrDurationValue(t *testing.T) {
+	want := 10 * time.Second
+
+	got := parseIntOrDurationValue("10", 5*time.Second)
+	if want != got {
+		t.Error(fmt.Sprintf("want: %q got: %q", want, got))
+	}
+}
+
+func Test_Duration_parseIntOrDurationValue(t *testing.T) {
+	want := 10 * time.Second
+
+	got := parseIntOrDurationValue("10s", 5*time.Second)
+	if want != got {
+		t.Error(fmt.Sprintf("want: %q got: %q", want, got))
+	}
+
+}
+
+func Test_EmptyString_parseIntOrDurationValue(t *testing.T) {
+	want := 5 * time.Second
+
+	got := parseIntOrDurationValue("", 5*time.Second)
+	if want != got {
+		t.Error(fmt.Sprintf("want: %q got: %q", want, got))
+	}
+}
+
+func Test_ZeroAsString_parseIntOrDurationValue(t *testing.T) {
+	want := 0 * time.Second
+
+	got := parseIntOrDurationValue("0", 5*time.Second)
+	if want != got {
+		t.Error(fmt.Sprintf("want: %q got: %q", want, got))
+	}
+}
+
+func Test_NonParsableString_parseIntOrDurationValue(t *testing.T) {
+	want := 5 * time.Second
+
+	got := parseIntOrDurationValue("this is not good", 5*time.Second)
+	if want != got {
+		t.Error(fmt.Sprintf("want: %q got: %q", want, got))
+	}
+}
