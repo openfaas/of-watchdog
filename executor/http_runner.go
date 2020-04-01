@@ -108,9 +108,9 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	var cancel context.CancelFunc
 
 	if f.ExecTimeout.Nanoseconds() > 0 {
-		reqCtx, cancel = context.WithTimeout(context.Background(), f.ExecTimeout)
+		reqCtx, cancel = context.WithTimeout(r.Context(), f.ExecTimeout)
 	} else {
-		reqCtx = context.Background()
+		reqCtx = r.Context()
 		cancel = func() {
 
 		}
