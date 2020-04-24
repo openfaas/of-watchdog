@@ -45,7 +45,7 @@ func (w WatchdogConfig) Process() (string, []string) {
 		return parts[0], parts[1:]
 	}
 
-	return parts[0], []string{}
+	return parts[0], nil
 }
 
 // New create config based upon environmental variables.
