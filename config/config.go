@@ -112,7 +112,7 @@ func mapEnv(env []string) map[string]string {
 	mapped := map[string]string{}
 
 	for _, val := range env {
-		keyValue := strings.Split(val, "=")
+		keyValue := strings.SplitN(val, "=", 2)
 		if len(keyValue) == 2 {
 			mapped[keyValue[0]] = keyValue[1]
 			continue
