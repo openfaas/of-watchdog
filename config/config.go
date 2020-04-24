@@ -112,17 +112,13 @@ func mapEnv(env []string) map[string]string {
 	mapped := map[string]string{}
 
 	for _, val := range env {
-		sep := strings.Index(val, "=")
-
-		if sep > 0 {
-			key := val[0:sep]
-			value := val[sep+1:]
-			mapped[key] = value
-		} else {
-			fmt.Println("Bad environment: " + val)
+		keyValue := strings.Split(val, "=")
+		if len(keyValue) == 2 {
+			mapped[keyValue[0]] = keyValue[1]
+			continue
 		}
+		fmt.Println("Bad environment: " + val)
 	}
-
 	return mapped
 }
 
