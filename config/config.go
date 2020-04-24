@@ -101,7 +101,7 @@ func New(env []string) WatchdogConfig {
 		MaxInflight:      getInt(envMap, "max_inflight", 0),
 	}
 
-	if val := envMap["mode"]; len(val) > 0 {
+	if val, exists := envMap["mode"]; exists {
 		config.OperationalMode = WatchdogModeConst(val)
 	}
 
@@ -113,7 +113,7 @@ func mapEnv(env []string) map[string]string {
 
 	for _, val := range env {
 		keyValue := strings.SplitN(val, "=", 2)
-		if len(keyValue) == 2 {
+		if len(keyValue) == 2 && keyValue[1] != "" {
 			mapped[keyValue[0]] = keyValue[1]
 			continue
 		}
