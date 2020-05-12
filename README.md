@@ -109,7 +109,7 @@ Forks a process per request and can deal with a request body larger than memory 
 
 HTTP headers cannot be sent after function starts executing due to input/output being hooked-up directly to response for streaming efficiencies. Response code is always 200 unless there is an issue forking the process. An error mid-flight will have to be picked up on the client. Multi-threaded.
 
-* Input is sent back to client as soon as it's printed to stdout by the executing process.
+* Output is sent back to client as soon as it's printed to stdout by the executing process.
 
 * A static Content-type can be set ahead of time.
 
