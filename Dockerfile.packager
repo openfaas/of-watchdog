@@ -3,4 +3,4 @@ FROM scratch
 
 ARG PLATFORM
 
-COPY --from=build /go/src/github.com/openfaas-incubator/of-watchdog/of-watchdog$PLATFORM ./fwatchdog
+COPY --from=build /go/src/github.com/openfaas/of-watchdog/of-watchdog$PLATFORM ./fwatchdog

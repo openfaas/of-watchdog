@@ -16,10 +16,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/openfaas-incubator/of-watchdog/config"
-	"github.com/openfaas-incubator/of-watchdog/executor"
-	"github.com/openfaas-incubator/of-watchdog/metrics"
 	limiter "github.com/openfaas/faas-middleware/concurrency-limiter"
+	"github.com/openfaas/of-watchdog/config"
+	"github.com/openfaas/of-watchdog/executor"
+	"github.com/openfaas/of-watchdog/metrics"
 )
 
 var (

@@ -15,10 +15,10 @@ docker build --no-cache --build-arg PLATFORM="" -t openfaas/of-watchdog:latest-d
 
 docker create --name buildoutput openfaas/of-watchdog:build echo
 
-docker cp buildoutput:/go/src/github.com/openfaas-incubator/of-watchdog/of-watchdog ./of-watchdog
-docker cp buildoutput:/go/src/github.com/openfaas-incubator/of-watchdog/of-watchdog-darwin ./of-watchdog-darwin
-docker cp buildoutput:/go/src/github.com/openfaas-incubator/of-watchdog/of-watchdog-armhf ./of-watchdog-armhf
-docker cp buildoutput:/go/src/github.com/openfaas-incubator/of-watchdog/of-watchdog-arm64 ./of-watchdog-arm64
-docker cp buildoutput:/go/src/github.com/openfaas-incubator/of-watchdog/of-watchdog.exe ./of-watchdog.exe
+docker cp buildoutput:/go/src/github.com/openfaas/of-watchdog/of-watchdog ./of-watchdog
+docker cp buildoutput:/go/src/github.com/openfaas/of-watchdog/of-watchdog-darwin ./of-watchdog-darwin
+docker cp buildoutput:/go/src/github.com/openfaas/of-watchdog/of-watchdog-armhf ./of-watchdog-armhf
+docker cp buildoutput:/go/src/github.com/openfaas/of-watchdog/of-watchdog-arm64 ./of-watchdog-arm64
+docker cp buildoutput:/go/src/github.com/openfaas/of-watchdog/of-watchdog.exe ./of-watchdog.exe
 
 docker rm buildoutput

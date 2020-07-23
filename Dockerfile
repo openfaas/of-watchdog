@@ -4,7 +4,7 @@ ARG CGO_ENABLED=0
 ARG GO111MODULE="off"
 ARG GOPROXY=""
 
-WORKDIR /go/src/github.com/openfaas-incubator/of-watchdog
+WORKDIR /go/src/github.com/openfaas/of-watchdog
 
 COPY vendor              vendor
 COPY config              config

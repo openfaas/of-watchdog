@@ -1,6 +1,6 @@
 # of-watchdog
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/openfaas-incubator/of-watchdog)](https://goreportcard.com/report/github.com/openfaas-incubator/of-watchdog) [![Build Status](https://travis-ci.org/openfaas-incubator/of-watchdog.svg?branch=master)](https://travis-ci.org/openfaas-incubator/of-watchdog)
+[![Go Report Card](https://goreportcard.com/badge/github.com/openfaas/of-watchdog)](https://goreportcard.com/report/github.com/openfaas/of-watchdog) [![Build Status](https://travis-ci.org/openfaas/of-watchdog.svg?branch=master)](https://travis-ci.org/openfaas/of-watchdog)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![OpenFaaS](https://img.shields.io/badge/openfaas-serverless-blue.svg)](https://www.openfaas.com)
 
@@ -31,13 +31,12 @@ The following templates have been available for testing:
 
 | Template               | HTTP framework      | Repo                                                               |
 |------------------------|---------------------|--------------------------------------------------------------------|
-| Node.js 8              | Express.js          | https://github.com/openfaas-incubator/node8-express-template       |
-| Node.js 10 (LTS)       | Express.js          | https://github.com/openfaas-incubator/node10-express-template      |
+| Node.js 12 (LTS)       | Express.js          | https://github.com/openfaas/templates/      |
 | Python 3 & 2.7         | Flask               | https://github.com/openfaas-incubator/python-flask-template        |
 | Golang                 | Go HTTP (stdlib)    | https://github.com/openfaas-incubator/golang-http-template         |
 | Golang                 | (http.HandlerFunc)  | https://github.com/openfaas-incubator/golang-http-template         |
 | Ruby                   | Sinatra             | https://github.com/openfaas-incubator/ruby-http                    |
-| Java 8                 | Sun HTTP / Maven    | https://github.com/openfaas/templates/                             |
+| Java 11                | Sun HTTP / Gradle   | https://github.com/openfaas/templates/                             |
 
 Unofficial: [.NET Core / C# and Kestrel](https://github.com/burtonr/csharp-kestrel-template)
 
