@@ -1,25 +1,26 @@
 # of-watchdog
 
+Reverse proxy for HTTP microservices and STDIO
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/openfaas/of-watchdog)](https://goreportcard.com/report/github.com/openfaas/of-watchdog) [![Build Status](https://travis-ci.org/openfaas/of-watchdog.svg?branch=master)](https://travis-ci.org/openfaas/of-watchdog)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![OpenFaaS](https://img.shields.io/badge/openfaas-serverless-blue.svg)](https://www.openfaas.com)
 
-The `of-watchdog` is a new version of the OpenFaaS watchdog which provides the original STDIO mode from the Classic Watchdog along with a new HTTP `mode`.
+The `of-watchdog` implements a HTTP server listening on port 8080, and acts as a reverse proxy for running functions and microservices. It can be used independently, or as the entrypoint for a container with OpenFaaS.
 
-See also: [Classic Watchdog](https://github.com/openfaas/faas/tree/master/watchdog)
+This version of the OpenFaaS watchdog adds support for HTTP proxying as well as STDIO, which enables re-use of memory and very fast serving of requests. It does not aim to replace the [Classic Watchdog](https://github.com/openfaas/faas/tree/master/watchdog), but offers another option for those who need these features.
 
 ### Goals:
-* Cleaner abstractions for maintenance
-* Keep function process warm for lower latency / caching / persistent connections 
-* Explore streaming for large files (beyond disk/RAM capacity)
+
+* Keep function process warm for lower latency / caching / persistent connections through using HTTP
+* Enable streaming of large responses from functions, beyond the RAM or disk capacity of the container
+* Cleaner abstractions for each "mode"
 
 ![](https://camo.githubusercontent.com/61c169ab5cd01346bc3dc7a11edc1d218f0be3b4/68747470733a2f2f7062732e7477696d672e636f6d2f6d656469612f4447536344626c554941416f34482d2e6a70673a6c61726765)
 
-## Watchdog modes:
+## Modes
 
-History/context: the original watchdog supported mode the Serializing fork mode only and Afterburn was available for testing via a pull request.
-
-When the of-watchdog is complete this version will support five modes as listed below. We may consolidate or remove some of these modes before going to 1.0 so please consider modes 2-4 experimental.
+There are several modes available for the of-watchdog which changes how it interacts with your microservice or function code.
 
 ### 1. HTTP (mode=http)
 
@@ -114,11 +115,17 @@ HTTP headers cannot be sent after function starts executing due to input/output 
 
 * Exec timeout: supported.
 
-### 4. Afterburn (mode=afterburn)
+### 4. Static (mode=static)
 
-### 4.1 Status
+This mode starts an HTTP file server for serving static content found at the directory specified by `static_path`.
 
-Afterburn should be considered for deprecation in favour of the HTTP mode.
+See an example in the [Hugo blog post](https://www.openfaas.com/blog/serverless-static-sites/).
+
+### 5. Afterburn (mode=afterburn)
+
+### 5.1 Status
+
+Afterburn has been deprecated in favour of the HTTP mode.
 
 Several sample templates are available under the OpenFaaS incubator organisation.
 
@@ -128,7 +135,7 @@ https://github.com/openfaas/python-afterburn
 
 https://github.com/openfaas/java-afterburn
 
-### 4.2 Details
+### 5.2 Details
 
 Uses a single process for all requests, if that request dies the container dies.
 
@@ -141,10 +148,6 @@ Vastly accelerated processing speed but requires a client library for each langu
 * A dynamic Content-type can be set from the client library.
 
 * Exec timeout: not supported.
-
-### 5. Static (mode=static)
-
-This mode starts an HTTP file server for serving static content found at the directory specified by `static_path`.
 
 ## Configuration
 
