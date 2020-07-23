@@ -10,17 +10,20 @@ The `of-watchdog` implements a HTTP server listening on port 8080, and acts as a
 
 This version of the OpenFaaS watchdog adds support for HTTP proxying as well as STDIO, which enables re-use of memory and very fast serving of requests. It does not aim to replace the [Classic Watchdog](https://github.com/openfaas/faas/tree/master/watchdog), but offers another option for those who need these features.
 
+
 ### Goals:
 
 * Keep function process warm for lower latency / caching / persistent connections through using HTTP
 * Enable streaming of large responses from functions, beyond the RAM or disk capacity of the container
 * Cleaner abstractions for each "mode"
 
-![](https://camo.githubusercontent.com/61c169ab5cd01346bc3dc7a11edc1d218f0be3b4/68747470733a2f2f7062732e7477696d672e636f6d2f6d656469612f4447536344626c554941416f34482d2e6a70673a6c61726765)
-
 ## Modes
 
 There are several modes available for the of-watchdog which changes how it interacts with your microservice or function code.
+
+![](https://docs.openfaas.com/architecture/watchdog-modes.png)
+
+> A comparison of three watchdog modes. Top left - Classic Watchdog, top right: afterburn (deprecated), bottom left HTTP mode from of-watchdog.
 
 ### 1. HTTP (mode=http)
 
@@ -90,6 +93,8 @@ This mode is designed to replicate the behaviour of the original watchdog for ba
 #### 2.2 Description
 
 Forks one process per request. Multi-threaded. Ideal for retro-fitting a CGI application handler i.e. for Flask.
+
+![](https://camo.githubusercontent.com/61c169ab5cd01346bc3dc7a11edc1d218f0be3b4/68747470733a2f2f7062732e7477696d672e636f6d2f6d656469612f4447536344626c554941416f34482d2e6a70673a6c61726765)
 
 Limited to processing files sized as per available memory.
 
