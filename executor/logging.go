@@ -60,6 +60,9 @@ func bindLoggingPipe(name string, pipe io.Reader, output io.Writer) {
 }
 
 // logHeader copies timestamp construction from the log package `formatHeader`
+//
+// https://golang.org/src/log/log.go?s=11483:11525#L100
+//
 // this is needed to preserve backwards compatibility while also allowing us
 // to control when newlines are added to the output. By default, all print
 // statements to the logger will suffix a newline (if it is missing). This
@@ -110,6 +113,10 @@ func logHeader(flag int) []byte {
 }
 
 // Cheap integer to fixed-width decimal ASCII. Give a negative width to avoid zero-padding.
+// Copied from the log package
+//
+// https://golang.org/src/log/log.go?s=11483:11525#L79
+//
 func itoa(buf *[]byte, i int, wid int) {
 	// Assemble decimal in reverse order.
 	var b [20]byte
