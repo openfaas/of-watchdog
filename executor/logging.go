@@ -2,7 +2,6 @@ package executor
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"log"
 	"time"
@@ -31,8 +30,6 @@ func bindLoggingPipe(name string, pipe io.Reader, output io.Writer) {
 				log.Printf("Error scanning %s: %s", name, err.Error())
 				return
 			}
-
-			fmt.Println(isPrefix, string(line))
 
 			if !continuation {
 				// we are not continuing a previous line, so we
