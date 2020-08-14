@@ -10,7 +10,6 @@ COPY vendor              vendor
 COPY config              config
 COPY executor            executor
 COPY metrics             metrics
-COPY metrics             metrics
 COPY main.go             .
 
 # Run a gofmt and exclude all vendored code.
