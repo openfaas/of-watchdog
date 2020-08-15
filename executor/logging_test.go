@@ -12,7 +12,10 @@ import (
 func TestBindLoggingPipe(t *testing.T) {
 	// set the log timestamp prefix to just the date to make
 	// checking the output deterministic
-	log.SetFlags(log.Ldate)
+	now := time.Now().Format("2006/01/02 15:04:05")
+	logHeader = func() []byte {
+		return []byte(now)
+	}
 
 	// make the buffer small so that the test stays readable
 	orig := stdLogBufferSize
@@ -39,7 +42,6 @@ this line is short
 
 	ouput := out.String()
 
-	now := time.Now().Format("2006/01/02 ")
 	expected := fmt.Sprintf(`%s
 %sthis line is more than 32 bytes long
 %s
