@@ -24,3 +24,4 @@ build
 template
 **/*.sha256
 
+bin

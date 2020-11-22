@@ -1,0 +1,81 @@
+ARG goversion=1.14
+
+FROM teamserverless/license-check:0.3.9 as license-check
+
+FROM --platform=${BUILDPLATFORM:-linux/amd64} golang:$goversion as builder
+
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+ARG TARGETOS
+ARG TARGETARCH
+
+ARG GIT_COMMIT="000000"
+ARG VERSION="dev"
+
+COPY --from=license-check /license-check /usr/bin/
+
+ARG CGO_ENABLED=0
+ARG GO111MODULE="on"
+ENV GOFLAGS=-mod=vendor
+ARG GOPROXY=""
+
+WORKDIR /app
+COPY vendor              vendor
+COPY config              config
+COPY executor            executor
+COPY metrics             metrics
+COPY version.go          .
+COPY main.go             .
+COPY go.mod              .
+COPY go.sum              .
+
+
+# use multiple stages here because buildkit will run these in parallel,
+# if possible
+FROM builder as linux
+RUN GOOS=linux CGO_ENABLED=0 \
+    go build --ldflags "-s -w \
+    -X github.com/openfaas/of-watchdog/main.GitCommit=${GIT_COMMIT} \
+    -X github.com/openfaas/of-watchdog/main.Version=${VERSION}" \
+    -a -installsuffix cgo -o fwatchdog
+
+FROM builder as darwin
+RUN GOOS=darwin CGO_ENABLED=0 \
+    go build --ldflags "-s -w \
+    -X github.com/openfaas/of-watchdog/main.GitCommit=${GIT_COMMIT} \
+    -X github.com/openfaas/of-watchdog/main.Version=${VERSION}" \
+    -a -installsuffix cgo -o fwatchdog-darwin
+
+FROM builder as windows
+RUN GOOS=windows CGO_ENABLED=0 \
+    go build --ldflags "-s -w \
+    -X github.com/openfaas/of-watchdog/main.GitCommit=${GIT_COMMIT} \
+    -X github.com/openfaas/of-watchdog/main.Version=${VERSION}" \
+    -a -installsuffix cgo -o fwatchdog.exe
+
+FROM builder as arm
+RUN GOOS=linux GOARCH=arm GOARM=6 CGO_ENABLED=0 \
+    go build --ldflags "-s -w \
+    -X github.com/openfaas/of-watchdog/main.GitCommit=${GIT_COMMIT} \
+    -X github.com/openfaas/of-watchdog/main.Version=${VERSION}" \
+    -a -installsuffix cgo -o fwatchdog-armhf
+
+FROM builder as arm64
+RUN GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
+    go build --ldflags "-s -w \
+    -X github.com/openfaas/of-watchdog/main.GitCommit=${GIT_COMMIT} \
+    -X github.com/openfaas/of-watchdog/main.Version=${VERSION}" \
+    -a -installsuffix cgo -o fwatchdog-arm64
+
+# Release stage
+FROM scratch
+
+WORKDIR /bin
+
+COPY --from=linux /app/fwatchdog         /bin
+COPY --from=darwin /app/fwatchdog-darwin /bin
+COPY --from=arm /app/fwatchdog-armhf     /bin
+COPY --from=windows /app/fwatchdog.exe   /bin
+COPY --from=arm64 /app/fwatchdog-arm64   /bin
+
+CMD ["/bin/fwatchdog"]

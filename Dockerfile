@@ -1,31 +1,54 @@
+ARG goversion=1.15
+
 FROM teamserverless/license-check:0.3.9 as license-check
 
-FROM golang:1.15 as build
+FROM --platform=${BUILDPLATFORM:-linux/amd64} golang:$goversion as builder
+
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+ARG TARGETOS
+ARG TARGETARCH
+
+ARG GIT_COMMIT="000000"
+ARG VERSION="dev"
+
 COPY --from=license-check /license-check /usr/bin/
 
 ARG CGO_ENABLED=0
 ARG GO111MODULE="on"
+ENV GOFLAGS=-mod=vendor
 ARG GOPROXY=""
 
-WORKDIR /go/src/github.com/openfaas/of-watchdog
+WORKDIR /app
 COPY vendor              vendor
 COPY config              config
 COPY executor            executor
 COPY metrics             metrics
+COPY version.go          .
 COPY main.go             .
 COPY go.mod              .
 COPY go.sum              .
 
-RUN license-check -path  /go/src/github.com/openfaas/of-watchdog --verbose=false "Alex Ellis" "OpenFaaS Author(s)"
+RUN license-check -path  /app --verbose=false "Alex Ellis" "OpenFaaS Author(s)"
+RUN gofmt -l -d $(find . -type f -name '*.go' -not -path "./vendor/*")
+RUN go test -v ./...
 
-# Run a gofmt and exclude all vendored code.
-RUN test -z "$(gofmt -l $(find . -type f -name '*.go' -not -path "./vendor/*"))"
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0 \
+    go build --ldflags "-s -w \
+    -X github.com/openfaas/of-watchdog/main.GitCommit=${GIT_COMMIT} \
+    -X github.com/openfaas/of-watchdog/main.Version=${VERSION}" \
+    -a -installsuffix cgo -o fwatchdog
 
-RUN go test -mod=vendor -v ./...
 
-# Stripping via -ldflags "-s -w" 
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -a -ldflags "-s -w" -installsuffix cgo -o of-watchdog . \
-    && CGO_ENABLED=0 GOOS=darwin go build -mod=vendor -a -ldflags "-s -w" -installsuffix cgo -o of-watchdog-darwin . \
-    && GOARM=6 GOARCH=arm CGO_ENABLED=0 GOOS=linux go build -mod=vendor -a -ldflags "-s -w" -installsuffix cgo -o of-watchdog-armhf . \
-    && GOARCH=arm64 CGO_ENABLED=0 GOOS=linux go build -mod=vendor -a -ldflags "-s -w" -installsuffix cgo -o of-watchdog-arm64 . \
-    && GOOS=windows CGO_ENABLED=0 go build -mod=vendor -a -ldflags "-s -w" -installsuffix cgo -o of-watchdog.exe .
+FROM scratch as release
+
+LABEL org.label-schema.license="MIT" \
+    org.label-schema.vcs-url="https://github.com/openfaas/of-watchdog" \
+    org.label-schema.vcs-type="Git" \
+    org.label-schema.name="openfaas/of-watchdog" \
+    org.label-schema.vendor="openfaas" \
+    org.label-schema.docker.schema-version="1.0"
+
+COPY --from=builder /app/fwatchdog /fwatchdog
+
+ENTRYPOINT ["/fwatchdog"]
