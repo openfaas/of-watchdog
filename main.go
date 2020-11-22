@@ -28,13 +28,21 @@ var (
 
 func main() {
 	var runHealthcheck bool
+	var versionFlag bool
 
+	flag.BoolVar(&versionFlag, "version", false, "Print the version and exit")
 	flag.BoolVar(&runHealthcheck,
 		"run-healthcheck",
 		false,
 		"Check for the a lock-file, when using an exec healthcheck. Exit 0 for present, non-zero when not found.")
 
 	flag.Parse()
+
+	printVersion()
+
+	if versionFlag {
+		return
+	}
 
 	if runHealthcheck {
 		if lockFilePresent() {
@@ -370,4 +378,13 @@ func makeHealthHandler() func(http.ResponseWriter, *http.Request) {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	}
+}
+
+func printVersion() {
+	sha := "unknown"
+	if len(GitCommit) > 0 {
+		sha = GitCommit
+	}
+
+	log.Printf("Version: %v\tSHA: %v\n", BuildVersion(), sha)
 }
