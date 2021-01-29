@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -345,5 +346,58 @@ func Test_NonParsableString_parseIntOrDurationValue(t *testing.T) {
 	got := parseIntOrDurationValue("this is not good", 5*time.Second)
 	if want != got {
 		t.Error(fmt.Sprintf("want: %q got: %q", want, got))
+	}
+}
+
+func Test_mapEnv(t *testing.T) {
+	type args struct {
+		env []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want map[string]string
+	}{
+		{
+			name: "change env to map",
+			args: args{
+				env: []string{
+					"FOO=BAR",
+				},
+			},
+			want: map[string]string{
+				"FOO": "BAR",
+			},
+		},
+		{
+			name: "keep '=' of environment value when contains '='",
+			args: args{
+				env: []string{
+					"FOO=BAR=BAZ",
+				},
+			},
+			want: map[string]string{
+				"FOO": "BAR=BAZ",
+			},
+		},
+		{
+			name: "ignore empty value environment",
+			args: args{
+				env: []string{
+					"FOO=",
+					"BAR=BAZ",
+				},
+			},
+			want: map[string]string{
+				"BAR": "BAZ",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := mapEnv(tt.args.env); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("mapEnv() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

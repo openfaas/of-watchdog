@@ -45,7 +45,7 @@ func (w WatchdogConfig) Process() (string, []string) {
 		return parts[0], parts[1:]
 	}
 
-	return parts[0], []string{}
+	return parts[0], nil
 }
 
 // New create config based upon environmental variables.
@@ -101,7 +101,7 @@ func New(env []string) WatchdogConfig {
 		MaxInflight:      getInt(envMap, "max_inflight", 0),
 	}
 
-	if val := envMap["mode"]; len(val) > 0 {
+	if val, exists := envMap["mode"]; exists {
 		config.OperationalMode = WatchdogModeConst(val)
 	}
 
@@ -112,17 +112,13 @@ func mapEnv(env []string) map[string]string {
 	mapped := map[string]string{}
 
 	for _, val := range env {
-		sep := strings.Index(val, "=")
-
-		if sep > 0 {
-			key := val[0:sep]
-			value := val[sep+1:]
-			mapped[key] = value
-		} else {
-			fmt.Println("Bad environment: " + val)
+		keyValue := strings.SplitN(val, "=", 2)
+		if len(keyValue) == 2 && keyValue[1] != "" {
+			mapped[keyValue[0]] = keyValue[1]
+			continue
 		}
+		fmt.Println("Bad environment: " + val)
 	}
-
 	return mapped
 }
 
