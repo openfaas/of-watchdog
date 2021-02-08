@@ -35,6 +35,10 @@ type WatchdogConfig struct {
 	// Any request which exceeds this limit will
 	// have an immediate response of 429.
 	MaxInflight int
+
+	// PrefixLogs adds a date time stamp and the stdio name to any
+	// logging from executing functions
+	PrefixLogs bool
 }
 
 // Process returns a string for the process and a slice for the arguments from the FunctionProcess.
@@ -57,6 +61,15 @@ func New(env []string) WatchdogConfig {
 		functionProcess string
 		upstreamURL     string
 	)
+
+	// default behaviour for backwards compatibility
+	prefixLogs := true
+	if val, exists := envMap["prefix_logs"]; exists {
+		res, err := strconv.ParseBool(val)
+		if err == nil {
+			prefixLogs = res
+		}
+	}
 
 	if val, exists := envMap["fprocess"]; exists {
 		functionProcess = val
@@ -99,6 +112,7 @@ func New(env []string) WatchdogConfig {
 		BufferHTTPBody:   getBools(envMap, "buffer_http", "http_buffer_req_body"),
 		MetricsPort:      8081,
 		MaxInflight:      getInt(envMap, "max_inflight", 0),
+		PrefixLogs:       prefixLogs,
 	}
 
 	if val := envMap["mode"]; len(val) > 0 {
