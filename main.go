@@ -341,7 +341,7 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 	}
 	functionInvoker.UpstreamURL = urlValue
 
-	fmt.Printf("Forking - %s %s\n", commandName, arguments)
+	log.Printf("Forking - %s %s", commandName, arguments)
 	functionInvoker.Start()
 
 	return func(w http.ResponseWriter, r *http.Request) {
