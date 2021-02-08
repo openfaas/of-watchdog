@@ -54,9 +54,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	requestHandler := buildRequestHandler(watchdogConfig)
+	requestHandler := buildRequestHandler(watchdogConfig, watchdogConfig.PrefixLogs)
 
-	log.Printf("OperationalMode: %s\n", config.WatchdogMode(watchdogConfig.OperationalMode))
+	log.Printf("Watchdog mode: %s\n", config.WatchdogMode(watchdogConfig.OperationalMode))
 
 	httpMetrics := metrics.NewHttp()
 	http.HandleFunc("/", metrics.InstrumentHandler(requestHandler, httpMetrics))
@@ -81,6 +81,7 @@ func main() {
 		watchdogConfig.HTTPReadTimeout,
 		watchdogConfig.HTTPWriteTimeout,
 		watchdogConfig.ExecTimeout)
+
 	log.Printf("Listening on port: %d\n", watchdogConfig.TCPPort)
 
 	listenUntilShutdown(shutdownTimeout, s, watchdogConfig.SuppressLock)
@@ -149,21 +150,18 @@ func listenUntilShutdown(shutdownTimeout time.Duration, s *http.Server, suppress
 	<-idleConnsClosed
 }
 
-func buildRequestHandler(watchdogConfig config.WatchdogConfig) http.Handler {
+func buildRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs bool) http.Handler {
 	var requestHandler http.HandlerFunc
 
 	switch watchdogConfig.OperationalMode {
 	case config.ModeStreaming:
-		requestHandler = makeForkRequestHandler(watchdogConfig)
+		requestHandler = makeForkRequestHandler(watchdogConfig, prefixLogs)
 		break
 	case config.ModeSerializing:
-		requestHandler = makeSerializingForkRequestHandler(watchdogConfig)
-		break
-	case config.ModeAfterBurn:
-		requestHandler = makeAfterBurnRequestHandler(watchdogConfig)
+		requestHandler = makeSerializingForkRequestHandler(watchdogConfig, prefixLogs)
 		break
 	case config.ModeHTTP:
-		requestHandler = makeHTTPRequestHandler(watchdogConfig)
+		requestHandler = makeHTTPRequestHandler(watchdogConfig, prefixLogs)
 		break
 	case config.ModeStatic:
 		requestHandler = makeStaticRequestHandler(watchdogConfig)
@@ -199,42 +197,10 @@ func createLockFile() (string, error) {
 	return path, nil
 }
 
-func makeAfterBurnRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
-
-	commandName, arguments := watchdogConfig.Process()
-	functionInvoker := executor.AfterBurnFunctionRunner{
-		Process:     commandName,
-		ProcessArgs: arguments,
-	}
-
-	log.Printf("Forking %s %s\n", commandName, arguments)
-	functionInvoker.Start()
-
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		req := executor.FunctionRequest{
-			Process:      commandName,
-			ProcessArgs:  arguments,
-			InputReader:  r.Body,
-			OutputWriter: w,
-		}
-
-		functionInvoker.Mutex.Lock()
-
-		err := functionInvoker.Run(req, r.ContentLength, r, w)
-
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte(err.Error()))
-		}
-
-		functionInvoker.Mutex.Unlock()
-	}
-}
-
-func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
+func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig, logPrefix bool) func(http.ResponseWriter, *http.Request) {
 	functionInvoker := executor.SerializingForkFunctionRunner{
 		ExecTimeout: watchdogConfig.ExecTimeout,
+		LogPrefix:   logPrefix,
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -263,9 +229,10 @@ func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig) fun
 	}
 }
 
-func makeForkRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
+func makeForkRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs bool) func(http.ResponseWriter, *http.Request) {
 	functionInvoker := executor.ForkFunctionRunner{
 		ExecTimeout: watchdogConfig.ExecTimeout,
+		LogPrefix:   prefixLogs,
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -322,13 +289,14 @@ func getEnvironment(r *http.Request) []string {
 	return envs
 }
 
-func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.ResponseWriter, *http.Request) {
+func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs bool) func(http.ResponseWriter, *http.Request) {
 	commandName, arguments := watchdogConfig.Process()
 	functionInvoker := executor.HTTPFunctionRunner{
 		ExecTimeout:    watchdogConfig.ExecTimeout,
 		Process:        commandName,
 		ProcessArgs:    arguments,
 		BufferHTTPBody: watchdogConfig.BufferHTTPBody,
+		LogPrefix:      prefixLogs,
 	}
 
 	if len(watchdogConfig.UpstreamURL) == 0 {
@@ -341,7 +309,7 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig) func(http.Resp
 	}
 	functionInvoker.UpstreamURL = urlValue
 
-	log.Printf("Forking - %s %s", commandName, arguments)
+	log.Printf("Forking: %s, arguments: %s", commandName, arguments)
 	functionInvoker.Start()
 
 	return func(w http.ResponseWriter, r *http.Request) {

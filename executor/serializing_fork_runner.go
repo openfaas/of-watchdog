@@ -14,6 +14,7 @@ import (
 // SerializingForkFunctionRunner forks a process for each invocation
 type SerializingForkFunctionRunner struct {
 	ExecTimeout time.Duration
+	LogPrefix   bool
 }
 
 // Run run a fork for each invocation
