@@ -1,6 +1,6 @@
-FROM teamserverless/license-check:0.3.6 as license-check
+FROM teamserverless/license-check:0.3.9 as license-check
 
-FROM golang:1.13 as build
+FROM golang:1.15 as build
 COPY --from=license-check /license-check /usr/bin/
 
 ARG CGO_ENABLED=0
