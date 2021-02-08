@@ -126,34 +126,6 @@ This mode starts an HTTP file server for serving static content found at the dir
 
 See an example in the [Hugo blog post](https://www.openfaas.com/blog/serverless-static-sites/).
 
-### 5. Afterburn (mode=afterburn)
-
-### 5.1 Status
-
-Afterburn has been deprecated in favour of the HTTP mode.
-
-Several sample templates are available under the OpenFaaS incubator organisation.
-
-https://github.com/openfaas/nodejs-afterburn
-
-https://github.com/openfaas/python-afterburn
-
-https://github.com/openfaas/java-afterburn
-
-### 5.2 Details
-
-Uses a single process for all requests, if that request dies the container dies.
-
-Vastly accelerated processing speed but requires a client library for each language - HTTP over stdin/stdout. Single-threaded with a mutex.
-
-* Limited to processing files sized as per available memory.
-
-* HTTP headers can be set even after executing the function.
-
-* A dynamic Content-type can be set from the client library.
-
-* Exec timeout: not supported.
-
 ## Configuration
 
 Environmental variables:
@@ -162,7 +134,7 @@ Environmental variables:
 
 | Option                      | Implemented  | Usage                         |
 |-----------------------------|--------------|-------------------------------|
-| `function_process`          | Yes          | Process to execute a server in `http` mode or to be executed for each request in the other modes. For non `http` mode the process must accept input via STDIN and print output via STDOUT. Alias: `fprocess` |
+| `function_process`          | Yes          | Process to execute a server in `http` mode or to be executed for each request in the other modes. For non `http` mode the process must accept input via STDIN and print output via STDOUT. Also known as "function process". Alias: `fprocess` |
 | `static_path`               | Yes          | Absolute or relative path to the directory that will be served if `mode="static"` |
 | `read_timeout`              | Yes          | HTTP timeout for reading the payload from the client caller (in seconds) |
 | `write_timeout`             | Yes          | HTTP timeout for writing a response body from your function (in seconds)  |
@@ -176,6 +148,8 @@ Environmental variables:
 | `http_buffer_req_body`      | Yes          | `http` mode only - buffers request body in memory before forwarding upstream to your template's `upstream_url`. Use if your upstream HTTP server does not accept `Transfer-Encoding: chunked` Default: `false` |
 | `buffer_http`               | Yes          | deprecated alias for `http_buffer_req_body`, will be removed in future version  |
 | `max_inflight`              | Yes          | Limit the maximum number of requests in flight |
-| `mode`                      | Yes          | The mode which of-watchdog operates in, Default `streaming` [see doc](#3-streaming-fork-modestreaming---default). Options are [http](#1-http-modehttp), [serialising fork](#2-serializing-fork-modeserializing), [streaming fork](#3-streaming-fork-modestreaming---default), [static](#4-static-modestatic) and [afterburn (depricated)](#5-afterburn-modeafterburn) |
+| `mode`                      | Yes          | The mode which of-watchdog operates in, Default `streaming` [see doc](#3-streaming-fork-modestreaming---default). Options are [http](#1-http-modehttp), [serialising fork](#2-serializing-fork-modeserializing), [streaming fork](#3-streaming-fork-modestreaming---default), [static](#4-static-modestatic) |
+| `prefix_logs`             | Yes          | When set to `true` the watchdog will add a prefix of "Date Time" + "stderr/stdout" to every line read from the function process. Default `true` |
+
 
 > Note: the .lock file is implemented for health-checking, but cannot be disabled yet. You must create this file in /tmp/.
