@@ -1,7 +1,6 @@
 package executor
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -45,9 +44,9 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 			<-timer.C
 
 			log.Printf("Function was killed by ExecTimeout: %s\n", f.ExecTimeout.String())
-			killErr := cmd.Process.Kill()
-			if killErr != nil {
-				fmt.Println("Error killing function due to ExecTimeout", killErr)
+
+			if err := cmd.Process.Kill(); err != nil {
+				log.Printf("Error killing function due to ExecTimeout %s", err.Error())
 			}
 		}()
 	}

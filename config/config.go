@@ -1,7 +1,7 @@
 package config
 
 import (
-	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -119,7 +119,7 @@ func mapEnv(env []string) map[string]string {
 			value := val[sep+1:]
 			mapped[key] = value
 		} else {
-			fmt.Println("Bad environment: " + val)
+			log.Printf("Bad environment: %s" + val)
 		}
 	}
 
