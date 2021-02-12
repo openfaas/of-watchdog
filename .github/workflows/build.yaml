@@ -24,12 +24,7 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
       - name: Make all
-        run: make test
-      - name: Docker meta
-        id: meta
-        uses: crazy-max/ghaction-docker-meta@v1
-        with:
-          images: "ghcr.io/${{ github.repository }}"
+        run: make all
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
@@ -43,4 +38,4 @@ jobs:
           outputs: "type=image,push=false"
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           # throw away tag, since we don't push the image
-          tags: openfaas/multiarch:test
+          tags: ghcr.io/openfaas/of-watchdog:${{ github.sha }}

@@ -7,67 +7,43 @@ on:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ 1.15.x ]
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
-      -
-        uses: actions/checkout@master
+      - uses: actions/checkout@master
         with:
           fetch-depth: 1
-      -
-        name: Docker meta
-        id: meta
-        uses: crazy-max/ghaction-docker-meta@v1
+      - name: Install Go
+        uses: actions/setup-go@v2
         with:
-          images: "ghcr.io/${{ github.repository }}"
-      -
-        name: Set up QEMU
+          go-version: ${{ matrix.go-version }}
+      - name: Make all
+        run: make all
+      - name: Get TAG
+        id: get_tag
+        run: echo ::set-output name=TAG::${GITHUB_REF#refs/tags/}
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
-      -
-        name: Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
-      -
-        name: Docker Login
+      - name: Docker Login
         uses: docker/login-action@v1
         with:
-          registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      -
-        name: Build binaries
+          registry: ghcr.io
+      - name: Docker Build and Push
         uses: docker/build-push-action@v2
         with:
-          context: .
-          file: ./Dockerfile.redist
-          platforms: linux/amd64
-          build-args: |
-            VERSION=${{ steps.meta.outputs.version }}
-            GIT_COMMIT=${{ github.sha }}
-          load: true
-          push: false
-          # tag doesn't matter because we will never push this
-          tags: redist/throwaway:latest
-      -
-        name: Copy binaries to host
-        run: ./ci/copy_redist.sh redist/throwaway
-      -
-        name: Create SHA of binaries
-        run: ./ci/hashgen.sh
-      -
-        name: Docker Build and Push
-        uses: docker/build-push-action@v2
-        with:
-          context: .
+          context: ./
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm/v7,linux/arm64
-          target: release
-          build-args: |
-            VERSION=${{ steps.meta.outputs.version }}
-            GIT_COMMIT=${{ github.sha }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-      -
-        name: Upload binaries and their SHA to Github Release
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          tags: ghcr.io/openfaas/of-watchdog:${{ steps.get_tag.outputs.TAG }}
+      - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
