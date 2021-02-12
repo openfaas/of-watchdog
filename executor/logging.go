@@ -12,11 +12,13 @@ func bindLoggingPipe(name string, pipe io.Reader, output io.Writer, logPrefix bo
 
 	scanner := bufio.NewScanner(pipe)
 	logFlags := log.Flags()
-	if !logPrefix {
+	prefix := log.Prefix()
+	if logPrefix == false {
 		logFlags = 0
+		prefix = "" // Unnecessary, but set explicitly for completeness.
 	}
 
-	logger := log.New(output, log.Prefix(), logFlags)
+	logger := log.New(output, prefix, logFlags)
 
 	go func() {
 		for scanner.Scan() {
