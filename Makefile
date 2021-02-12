@@ -17,7 +17,7 @@ export GOFLAGS=-mod=vendor
 all: gofmt test dist hashgen
 
 .PHONY: test
-test: fmt
+test:
 	@echo "+ $@"
 	@go test -v ./...
 
