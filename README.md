@@ -29,9 +29,9 @@ There are several modes available for the of-watchdog which changes how it inter
 
 #### 1.1 Status
 
-The HTTP mode is set to become the default mode for future OpenFaaS templates.
+The HTTP mode is stable.
 
-The following templates have been available for testing:
+See example templates:
 
 | Template               | HTTP framework      | Repo                                                               |
 |------------------------|---------------------|--------------------------------------------------------------------|
@@ -45,8 +45,6 @@ The following templates have been available for testing:
 Unofficial: [.NET Core / C# and Kestrel](https://github.com/burtonr/csharp-kestrel-template)
 
 #### 1.2 Description
-
-The HTTP mode is similar to AfterBurn.
 
 A process is forked when the watchdog starts, we then forward any request incoming to the watchdog to a HTTP port within the container.
 
