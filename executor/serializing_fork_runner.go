@@ -146,7 +146,6 @@ func readOutputStreamFromProcess(stdout io.Reader, stderr io.Reader) (*[]byte, *
 		if err != nil {
 			c <- err
 		}
-
 		wg.Done()
 	}(errChannel)
 
