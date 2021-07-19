@@ -118,7 +118,6 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 	done := time.Since(start)
 	log.Printf("Took %f secs", done.Seconds())
 
-	log.Printf("stdout %s", string(*functionRes))
 	return functionRes, nil
 }
 
