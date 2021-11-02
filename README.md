@@ -124,6 +124,14 @@ This mode starts an HTTP file server for serving static content found at the dir
 
 See an example in the [Hugo blog post](https://www.openfaas.com/blog/serverless-static-sites/).
 
+## Metrics
+
+| Name                            | Description             | Type                   |
+|---------------------------------|-------------------------|------------------------|
+| http_requests_total             | Total number of requests | Counter               |
+| http_request_duration_seconds   | Duration of requests    | Histogram              |
+| http_requests_in_flight         | Number of requests in-flight | Gauge             |
+
 ## Configuration
 
 Environmental variables:
