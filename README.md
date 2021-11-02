@@ -136,6 +136,7 @@ Environmental variables:
 | `static_path`               | Yes          | Absolute or relative path to the directory that will be served if `mode="static"` |
 | `read_timeout`              | Yes          | HTTP timeout for reading the payload from the client caller (in seconds) |
 | `write_timeout`             | Yes          | HTTP timeout for writing a response body from your function (in seconds)  |
+| `healthcheck_interval`      | Yes          | Interval (in seconds) for HTTP healthcheck by container orchestrator i.e. kubelet. Used for graceful shutdowns.  |
 | `exec_timeout`              | Yes          | Exec timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0. |
 | `port`                      | Yes          | Specify an alternative TCP port for testing. Default: `8080` |
 | `write_debug`               | No           | Write all output, error messages, and additional information to the logs. Default is `false`. |
