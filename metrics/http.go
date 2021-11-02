@@ -11,10 +11,11 @@ import (
 type Http struct {
 	RequestsTotal            *prometheus.CounterVec
 	RequestDurationHistogram *prometheus.HistogramVec
+	InFlight                 prometheus.Gauge
 }
 
 func NewHttp() Http {
-	return Http{
+	h := Http{
 		RequestsTotal: promauto.NewCounterVec(prometheus.CounterOpts{
 			Subsystem: "http",
 			Name:      "requests_total",
@@ -26,5 +27,14 @@ func NewHttp() Http {
 			Help:      "Seconds spent serving HTTP requests.",
 			Buckets:   prometheus.DefBuckets,
 		}, []string{"code", "method"}),
+		InFlight: promauto.NewGauge(prometheus.GaugeOpts{
+			Subsystem: "http",
+			Name:      "requests_in_flight",
+			Help:      "total HTTP requests in-flight",
+		}),
 	}
+
+	// Default to 0 for queries during graceful shutdown.
+	h.InFlight.Set(0)
+	return h
 }

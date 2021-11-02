@@ -10,14 +10,14 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	defaults := New([]string{})
+	defaults, _ := New([]string{})
 	if defaults.TCPPort != 8080 {
 		t.Errorf("Want TCPPort: 8080, got: %d", defaults.TCPPort)
 	}
 }
 
 func Test_OperationalMode_Default(t *testing.T) {
-	defaults := New([]string{})
+	defaults, _ := New([]string{})
 	if defaults.OperationalMode != ModeStreaming {
 		t.Errorf("Want %s. got: %s", WatchdogMode(ModeStreaming), WatchdogMode(defaults.OperationalMode))
 	}
@@ -26,7 +26,7 @@ func Test_OperationalMode_Default(t *testing.T) {
 func Test_BufferHttpModeDefaultsToFalse(t *testing.T) {
 	env := []string{}
 
-	actual := New(env)
+	actual, _ := New(env)
 	want := false
 	if actual.BufferHTTPBody != want {
 		t.Errorf("Want %v. got: %v", want, actual.BufferHTTPBody)
@@ -39,7 +39,7 @@ func Test_UpstreamURL(t *testing.T) {
 		fmt.Sprintf("upstream_url=%s", urlVal),
 	}
 
-	actual := New(env)
+	actual, _ := New(env)
 	want := urlVal
 	if actual.UpstreamURL != want {
 		t.Errorf("Want %v. got: %v", want, actual.UpstreamURL)
@@ -52,7 +52,7 @@ func Test_UpstreamURLVerbose(t *testing.T) {
 		fmt.Sprintf("http_upstream_url=%s", urlVal),
 	}
 
-	actual := New(env)
+	actual, _ := New(env)
 	want := urlVal
 	if actual.UpstreamURL != want {
 		t.Errorf("Want %v. got: %v", want, actual.UpstreamURL)
@@ -64,7 +64,7 @@ func Test_BufferHttpMode_CanBeSetToTrue(t *testing.T) {
 		"http_buffer_req_body=true",
 	}
 
-	actual := New(env)
+	actual, _ := New(env)
 	want := true
 	if actual.BufferHTTPBody != want {
 		t.Errorf("Want %v. got: %v", want, actual.BufferHTTPBody)
@@ -76,7 +76,7 @@ func Test_OperationalMode_AfterBurn(t *testing.T) {
 		"mode=afterburn",
 	}
 
-	actual := New(env)
+	actual, _ := New(env)
 
 	if actual.OperationalMode != ModeAfterBurn {
 		t.Errorf("Want %s. got: %s", WatchdogMode(ModeAfterBurn), WatchdogMode(actual.OperationalMode))
@@ -88,7 +88,7 @@ func Test_OperationalMode_Static(t *testing.T) {
 		"mode=static",
 	}
 
-	actual := New(env)
+	actual, _ := New(env)
 
 	if actual.OperationalMode != ModeStatic {
 		t.Errorf("Want %s. got: %s", WatchdogMode(ModeStatic), WatchdogMode(actual.OperationalMode))
@@ -98,7 +98,7 @@ func Test_OperationalMode_Static(t *testing.T) {
 func Test_ContentType_Default(t *testing.T) {
 	env := []string{}
 
-	actual := New(env)
+	actual, _ := New(env)
 
 	if actual.ContentType != "application/octet-stream" {
 		t.Errorf("Default (ContentType) Want %s. got: %s", actual.ContentType, "octet-stream")
@@ -110,7 +110,7 @@ func Test_ContentType_Override(t *testing.T) {
 		"content_type=application/json",
 	}
 
-	actual := New(env)
+	actual, _ := New(env)
 
 	if actual.ContentType != "application/json" {
 		t.Errorf("(ContentType) Want %s. got: %s", actual.ContentType, "application/json")
@@ -122,7 +122,7 @@ func Test_FunctionProcessLegacyName(t *testing.T) {
 		"fprocess=env",
 	}
 
-	actual := New(env)
+	actual, _ := New(env)
 
 	if actual.FunctionProcess != "env" {
 		t.Errorf("Want %s. got: %s", "env", actual.FunctionProcess)
@@ -134,7 +134,7 @@ func Test_FunctionProcessAlternativeName(t *testing.T) {
 		"function_process=env",
 	}
 
-	actual := New(env)
+	actual, _ := New(env)
 
 	if actual.FunctionProcess != "env" {
 		t.Errorf("Want %s. got: %s", "env", actual.FunctionProcess)
@@ -177,7 +177,7 @@ func Test_FunctionProcess_Arguments(t *testing.T) {
 
 	for _, testCase := range cases {
 		t.Run(testCase.scenario, func(t *testing.T) {
-			actual := New([]string{testCase.env})
+			actual, _ := New([]string{testCase.env})
 
 			process, args := actual.Process()
 			if process != testCase.wantProcess {
@@ -205,7 +205,7 @@ func Test_PortOverride(t *testing.T) {
 		"port=8081",
 	}
 
-	actual := New(env)
+	actual, _ := New(env)
 
 	if actual.TCPPort != 8081 {
 		t.Errorf("Want %d. got: %d", 8081, actual.TCPPort)
@@ -251,7 +251,7 @@ func Test_Timeouts(t *testing.T) {
 	}
 
 	for _, testCase := range cases {
-		actual := New(testCase.env)
+		actual, _ := New(testCase.env)
 		if testCase.readTimeout != actual.HTTPReadTimeout {
 			t.Errorf("(%s) HTTPReadTimeout want: %s, got: %s", testCase.name, actual.HTTPReadTimeout, testCase.readTimeout)
 		}

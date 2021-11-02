@@ -68,7 +68,6 @@ func (f *HTTPFunctionRunner) Start() error {
 
 		<-sig
 		cmd.Process.Signal(syscall.SIGTERM)
-
 	}()
 
 	err := cmd.Start()
@@ -100,7 +99,11 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 		body = r.Body
 	}
 
-	request, _ := http.NewRequest(r.Method, upstreamURL, body)
+	request, err := http.NewRequest(r.Method, upstreamURL, body)
+	if err != nil {
+		return err
+	}
+
 	for h := range r.Header {
 		request.Header.Set(h, r.Header.Get(h))
 	}
@@ -116,14 +119,11 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	} else {
 		reqCtx = r.Context()
 		cancel = func() {
-
 		}
 	}
-
 	defer cancel()
 
 	res, err := f.Client.Do(request.WithContext(reqCtx))
-
 	if err != nil {
 		log.Printf("Upstream HTTP request error: %s\n", err.Error())
 
@@ -136,19 +136,15 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 			return nil
 		}
 
-		select {
-		case <-reqCtx.Done():
-			{
-				if reqCtx.Err() != nil {
-					// Error due to timeout / deadline
-					log.Printf("Upstream HTTP killed due to exec_timeout: %s\n", f.ExecTimeout)
-					w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
+		<-reqCtx.Done()
 
-					w.WriteHeader(http.StatusGatewayTimeout)
-					return nil
-				}
+		if reqCtx.Err() != nil {
+			// Error due to timeout / deadline
+			log.Printf("Upstream HTTP killed due to exec_timeout: %s\n", f.ExecTimeout)
+			w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
 
-			}
+			w.WriteHeader(http.StatusGatewayTimeout)
+			return nil
 		}
 
 		w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))

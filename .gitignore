@@ -25,3 +25,5 @@ template
 **/*.sha256
 
 bin
+/handler
+/Dockerfile2
