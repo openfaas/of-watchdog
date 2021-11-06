@@ -4,6 +4,7 @@
 package config
 
 import (
+	"bufio"
 	"fmt"
 	"testing"
 	"time"
@@ -13,6 +14,27 @@ func TestNew(t *testing.T) {
 	defaults, _ := New([]string{})
 	if defaults.TCPPort != 8080 {
 		t.Errorf("Want TCPPort: 8080, got: %d", defaults.TCPPort)
+	}
+
+}
+
+func Test_LogBufferSize_Default(t *testing.T) {
+	env := []string{}
+
+	actual, _ := New(env)
+	want := bufio.MaxScanTokenSize
+	if actual.LogBufferSize != want {
+		t.Errorf("Want %v. got: %v", want, actual.LogBufferSize)
+	}
+}
+
+func Test_LogBufferSize_Override(t *testing.T) {
+	env := []string{"log_buffer_size=1024"}
+
+	actual, _ := New(env)
+	want := 1024
+	if actual.LogBufferSize != want {
+		t.Errorf("Want %v. got: %v", want, actual.LogBufferSize)
 	}
 }
 

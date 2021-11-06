@@ -175,11 +175,11 @@ func buildRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs bool) 
 
 	switch watchdogConfig.OperationalMode {
 	case config.ModeStreaming:
-		requestHandler = makeForkRequestHandler(watchdogConfig, prefixLogs)
+		requestHandler = makeForkRequestHandler(watchdogConfig, prefixLogs, watchdogConfig.LogBufferSize)
 	case config.ModeSerializing:
 		requestHandler = makeSerializingForkRequestHandler(watchdogConfig, prefixLogs)
 	case config.ModeHTTP:
-		requestHandler = makeHTTPRequestHandler(watchdogConfig, prefixLogs)
+		requestHandler = makeHTTPRequestHandler(watchdogConfig, prefixLogs, watchdogConfig.LogBufferSize)
 	case config.ModeStatic:
 		requestHandler = makeStaticRequestHandler(watchdogConfig)
 	default:
@@ -245,10 +245,11 @@ func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig, log
 	}
 }
 
-func makeForkRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs bool) func(http.ResponseWriter, *http.Request) {
+func makeForkRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs bool, logBufferSize int) func(http.ResponseWriter, *http.Request) {
 	functionInvoker := executor.ForkFunctionRunner{
-		ExecTimeout: watchdogConfig.ExecTimeout,
-		LogPrefix:   prefixLogs,
+		ExecTimeout:   watchdogConfig.ExecTimeout,
+		LogPrefix:     prefixLogs,
+		LogBufferSize: logBufferSize,
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -305,7 +306,7 @@ func getEnvironment(r *http.Request) []string {
 	return envs
 }
 
-func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs bool) func(http.ResponseWriter, *http.Request) {
+func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs bool, logBufferSize int) func(http.ResponseWriter, *http.Request) {
 	commandName, arguments := watchdogConfig.Process()
 	functionInvoker := executor.HTTPFunctionRunner{
 		ExecTimeout:    watchdogConfig.ExecTimeout,
@@ -313,6 +314,7 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs boo
 		ProcessArgs:    arguments,
 		BufferHTTPBody: watchdogConfig.BufferHTTPBody,
 		LogPrefix:      prefixLogs,
+		LogBufferSize:  logBufferSize,
 	}
 
 	if len(watchdogConfig.UpstreamURL) == 0 {
