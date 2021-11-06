@@ -4,6 +4,7 @@
 package config
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"strconv"
@@ -44,6 +45,9 @@ type WatchdogConfig struct {
 	// PrefixLogs adds a date time stamp and the stdio name to any
 	// logging from executing functions
 	PrefixLogs bool
+
+	// LogBufferSize is the size for scanning logs for stdout/stderr
+	LogBufferSize int
 }
 
 // Process returns a string for the process and a slice for the arguments from the FunctionProcess.
@@ -66,6 +70,8 @@ func New(env []string) (WatchdogConfig, error) {
 		functionProcess string
 		upstreamURL     string
 	)
+
+	logBufferSize := bufio.MaxScanTokenSize
 
 	// default behaviour for backwards compatibility
 	prefixLogs := true
@@ -108,6 +114,13 @@ func New(env []string) (WatchdogConfig, error) {
 		healthcheckInterval = parseIntOrDurationValue(val, writeTimeout)
 	}
 
+	if val, exists := envMap["log_buffer_size"]; exists {
+		var err error
+		if logBufferSize, err = strconv.Atoi(val); err != nil {
+			return WatchdogConfig{}, fmt.Errorf("invalid log_buffer_size value: %s, error: %w", val, err)
+		}
+	}
+
 	c := WatchdogConfig{
 		TCPPort:             getInt(envMap, "port", 8080),
 		HTTPReadTimeout:     getDuration(envMap, "read_timeout", time.Second*10),
@@ -125,7 +138,9 @@ func New(env []string) (WatchdogConfig, error) {
 		MetricsPort:         8081,
 		MaxInflight:         getInt(envMap, "max_inflight", 0),
 		PrefixLogs:          prefixLogs,
+		LogBufferSize:       logBufferSize,
 	}
+
 	if val := envMap["mode"]; len(val) > 0 {
 		c.OperationalMode = WatchdogModeConst(val)
 	}

@@ -10,10 +10,17 @@ import (
 )
 
 // bindLoggingPipe spawns a goroutine for passing through logging of the given output pipe.
-func bindLoggingPipe(name string, pipe io.Reader, output io.Writer, logPrefix bool) {
+//
+func bindLoggingPipe(name string, pipe io.Reader, output io.Writer, logPrefix bool, maxBufferSize int) {
 	log.Printf("Started logging: %s from function.", name)
 
 	scanner := bufio.NewScanner(pipe)
+
+	size := bufio.MaxScanTokenSize
+
+	buffer := make([]byte, size)
+	scanner.Buffer(buffer, size)
+
 	logFlags := log.Flags()
 	prefix := log.Prefix()
 	if logPrefix == false {

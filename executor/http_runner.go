@@ -34,6 +34,7 @@ type HTTPFunctionRunner struct {
 	UpstreamURL    *url.URL
 	BufferHTTPBody bool
 	LogPrefix      bool
+	LogBufferSize  int
 }
 
 // Start forks the process used for processing incoming requests
@@ -57,8 +58,8 @@ func (f *HTTPFunctionRunner) Start() error {
 	errPipe, _ := cmd.StderrPipe()
 
 	// Logs lines from stderr and stdout to the stderr and stdout of this process
-	bindLoggingPipe("stderr", errPipe, os.Stderr, f.LogPrefix)
-	bindLoggingPipe("stdout", f.StdoutPipe, os.Stdout, f.LogPrefix)
+	bindLoggingPipe("stderr", errPipe, os.Stderr, f.LogPrefix, f.LogBufferSize)
+	bindLoggingPipe("stdout", f.StdoutPipe, os.Stdout, f.LogPrefix, f.LogBufferSize)
 
 	f.Client = makeProxyClient(f.ExecTimeout)
 
