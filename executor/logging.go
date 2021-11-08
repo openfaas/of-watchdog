@@ -16,10 +16,8 @@ func bindLoggingPipe(name string, pipe io.Reader, output io.Writer, logPrefix bo
 
 	scanner := bufio.NewScanner(pipe)
 
-	size := bufio.MaxScanTokenSize
-
-	buffer := make([]byte, size)
-	scanner.Buffer(buffer, size)
+	buffer := make([]byte, maxBufferSize)
+	scanner.Buffer(buffer, maxBufferSize)
 
 	logFlags := log.Flags()
 	prefix := log.Prefix()
