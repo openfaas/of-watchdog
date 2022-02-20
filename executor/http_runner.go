@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -168,7 +169,11 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 		w.Write(bodyBytes)
 	}
 
-	log.Printf("%s %s - %s - ContentLength: %d", r.Method, r.RequestURI, res.Status, res.ContentLength)
+	// Exclude logging for health check probes from the kubelet which can spam
+	// log collection systems.
+	if !strings.HasPrefix(r.UserAgent(), "kube-probe") {
+		log.Printf("%s %s - %s - ContentLength: %d", r.Method, r.RequestURI, res.Status, res.ContentLength)
+	}
 
 	return nil
 }
