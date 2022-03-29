@@ -152,7 +152,7 @@ Environmental variables:
 | `suppress_lock`             | Yes          | When set to `false` the watchdog will attempt to write a lockfile to /tmp/ for healthchecks. Default `false` |
 | `http_upstream_url`         | Yes          | `http` mode only - where to forward requests i.e. `127.0.0.1:5000` |
 | `upstream_url`              | Yes          | alias for `http_upstream_url` |
-| `http_buffer_req_body`      | Yes          | `http` mode only - buffers request body in memory before forwarding upstream to your template's `upstream_url`. Use if your upstream HTTP server does not accept `Transfer-Encoding: chunked` Default: `false` |
+| `http_buffer_req_body`      | Yes          | `http` mode only - buffers request body in memory before forwarding upstream to your template's `upstream_url`. Use if your upstream HTTP server does not accept `Transfer-Encoding: chunked`, for example WSGI tends to require this setting. Default: `false` |
 | `buffer_http`               | Yes          | deprecated alias for `http_buffer_req_body`, will be removed in future version  |
 | `max_inflight`              | Yes          | Limit the maximum number of requests in flight |
 | `mode`                      | Yes          | The mode which of-watchdog operates in, Default `streaming` [see doc](#3-streaming-fork-modestreaming---default). Options are [http](#1-http-modehttp), [serialising fork](#2-serializing-fork-modeserializing), [streaming fork](#3-streaming-fork-modestreaming---default), [static](#4-static-modestatic) |
