@@ -33,7 +33,7 @@ func bindLoggingPipe(name string, pipe io.Reader, output io.Writer, logPrefix bo
 			if logPrefix {
 				logger.Printf("%s: %s", name, scanner.Text())
 			} else {
-				logger.Printf("%s", scanner.Text())
+				logger.Print(scanner.Text())
 			}
 		}
 		if err := scanner.Err(); err != nil {
