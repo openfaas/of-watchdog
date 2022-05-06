@@ -25,11 +25,19 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: Make all
         run: make all
+
       - name: Get Repo Owner
         id: get_repo_owner
         run: >
           echo ::set-output name=repo_owner::$(echo ${{ github.repository_owner }} |
           tr '[:upper:]' '[:lower:]')
+      - name: Get Repo Name
+        id: get_repo_name
+        run: >
+          echo ::set-output name=repo_name::$(echo ${{ github.repository }} |
+          tr '[:upper:]' '[:lower:]' |
+          awk  -F'/' '{print $2}')
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
@@ -42,5 +50,5 @@ jobs:
           file: ./Dockerfile
           outputs: "type=image,push=false"
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-          # throw away tag, since we don't push the image
-          tags: ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/of-watchdog:${{ github.sha }}
+          tags: |
+            ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/${{ steps.get_repo_name.outputs.repo_name }}:${{ github.sha }}
