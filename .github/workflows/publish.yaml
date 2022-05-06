@@ -12,6 +12,14 @@ jobs:
         go-version: [ 1.17.x ]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
+    permissions:
+      actions: read
+      checks: write
+      issues: read
+      packages: write
+      pull-requests: read
+      repository-projects: read
+      statuses: read
     steps:
       - uses: actions/checkout@master
         with:
