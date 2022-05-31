@@ -156,7 +156,7 @@ Environmental variables:
 | `buffer_http`               | Yes          | deprecated alias for `http_buffer_req_body`, will be removed in future version  |
 | `max_inflight`              | Yes          | Limit the maximum number of requests in flight |
 | `mode`                      | Yes          | The mode which of-watchdog operates in, Default `streaming` [see doc](#3-streaming-fork-modestreaming---default). Options are [http](#1-http-modehttp), [serialising fork](#2-serializing-fork-modeserializing), [streaming fork](#3-streaming-fork-modestreaming---default), [static](#4-static-modestatic) |
-| `prefix_logs`             | Yes          | When set to `true` the watchdog will add a prefix of "Date Time" + "stderr/stdout" to every line read from the function process. Default `true` |
-| `log_buffer_size` | The amount of bytes to read from stderr/stdout for log lines. When exceeded, the user will see an "bufio.Scanner: token too long" error. The default value is `bufio.MaxScanTokenSize` |
+| `prefix_logs`               | Yes          | When set to `true` the watchdog will add a prefix of "Date Time" + "stderr/stdout" to every line read from the function process. Default `true` |
+| `log_buffer_size`           | Yes          | The amount of bytes to read from stderr/stdout for log lines. When exceeded, the user will see an "bufio.Scanner: token too long" error. The default value is `bufio.MaxScanTokenSize` |
 
 > Note: the .lock file is implemented for health-checking, but cannot be disabled yet. You must create this file in /tmp/.
