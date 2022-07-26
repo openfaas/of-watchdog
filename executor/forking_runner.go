@@ -4,6 +4,7 @@
 package executor
 
 import (
+	"context"
 	"io"
 	"log"
 	"os"
@@ -38,26 +39,14 @@ type ForkFunctionRunner struct {
 func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 	log.Printf("Running %s", req.Process)
 	start := time.Now()
-	cmd := exec.Command(req.Process, req.ProcessArgs...)
-	cmd.Env = req.Environment
 
-	var timer *time.Timer
+	var cmd *exec.Cmd
 	if f.ExecTimeout > time.Millisecond*0 {
-		timer = time.NewTimer(f.ExecTimeout)
-
-		go func() {
-			<-timer.C
-
-			log.Printf("Function was killed by ExecTimeout: %s\n", f.ExecTimeout.String())
-
-			if err := cmd.Process.Kill(); err != nil {
-				log.Printf("Error killing function due to ExecTimeout %s", err.Error())
-			}
-		}()
-	}
-
-	if timer != nil {
-		defer timer.Stop()
+		ctx, cancel := context.WithTimeout(context.Background(), f.ExecTimeout)
+		defer cancel()
+		cmd = exec.CommandContext(ctx, req.Process, req.ProcessArgs...)
+	} else {
+		cmd = exec.Command(req.Process, req.ProcessArgs...)
 	}
 
 	if req.InputReader != nil {
@@ -65,6 +54,7 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 		cmd.Stdin = req.InputReader
 	}
 
+	cmd.Env = req.Environment
 	cmd.Stdout = req.OutputWriter
 
 	errPipe, _ := cmd.StderrPipe()
@@ -81,9 +71,6 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 	waitErr := cmd.Wait()
 	done := time.Since(start)
 	log.Printf("Took %f secs", done.Seconds())
-	if timer != nil {
-		timer.Stop()
-	}
 
 	req.InputReader.Close()
 
