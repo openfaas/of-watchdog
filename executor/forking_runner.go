@@ -4,6 +4,8 @@
 package executor
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -36,35 +38,27 @@ type ForkFunctionRunner struct {
 
 // Run run a fork for each invocation
 func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
-	log.Printf("Running %s", req.Process)
+	log.Printf("Running: %s", req.Process)
 	start := time.Now()
-	cmd := exec.Command(req.Process, req.ProcessArgs...)
-	cmd.Env = req.Environment
 
-	var timer *time.Timer
+	var cmd *exec.Cmd
+	var ctx context.Context
 	if f.ExecTimeout > time.Millisecond*0 {
-		timer = time.NewTimer(f.ExecTimeout)
-
-		go func() {
-			<-timer.C
-
-			log.Printf("Function was killed by ExecTimeout: %s\n", f.ExecTimeout.String())
-
-			if err := cmd.Process.Kill(); err != nil {
-				log.Printf("Error killing function due to ExecTimeout %s", err.Error())
-			}
-		}()
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(context.Background(), f.ExecTimeout)
+		defer cancel()
+	} else {
+		ctx = context.Background()
 	}
 
-	if timer != nil {
-		defer timer.Stop()
-	}
+	cmd = exec.CommandContext(ctx, req.Process, req.ProcessArgs...)
 
 	if req.InputReader != nil {
 		defer req.InputReader.Close()
 		cmd.Stdin = req.InputReader
 	}
 
+	cmd.Env = req.Environment
 	cmd.Stdout = req.OutputWriter
 
 	errPipe, _ := cmd.StderrPipe()
@@ -72,24 +66,17 @@ func (f *ForkFunctionRunner) Run(req FunctionRequest) error {
 	// Prints stderr to console and is picked up by container logging driver.
 	bindLoggingPipe("stderr", errPipe, os.Stderr, f.LogPrefix, f.LogBufferSize)
 
-	startErr := cmd.Start()
-
-	if startErr != nil {
-		return startErr
+	if err := cmd.Start(); err != nil {
+		return err
 	}
 
-	waitErr := cmd.Wait()
+	err := cmd.Wait()
 	done := time.Since(start)
-	log.Printf("Took %f secs", done.Seconds())
-	if timer != nil {
-		timer.Stop()
+	if err != nil {
+		return fmt.Errorf("%s exited: after %.2fs, error: %s", req.Process, done.Seconds(), err)
 	}
 
-	req.InputReader.Close()
-
-	if waitErr != nil {
-		return waitErr
-	}
+	log.Printf("%s done: %.2fs secs", req.Process, done.Seconds())
 
 	return nil
 }
