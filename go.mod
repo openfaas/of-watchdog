@@ -1,6 +1,6 @@
 module github.com/openfaas/of-watchdog
 
-go 1.17
+go 1.18
 
 require (
 	github.com/openfaas/faas-middleware v1.0.0
