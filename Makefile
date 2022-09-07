@@ -7,8 +7,9 @@ ifneq ($(.GIT_UNTRACKEDCHANGES),)
 endif
 LDFLAGS := "-s -w -X main.Version=$(.GIT_VERSION) -X main.GitCommit=$(.GIT_COMMIT)"
 
-
-.IMAGE=ghcr.io/openfaas/of-watchdog
+SERVER?=ghcr.io
+OWNER?=openfaas
+IMG_NAME?=of-watchdog
 TAG?=latest
 
 export GOFLAGS=-mod=vendor
@@ -51,3 +52,17 @@ dist:
 # `./ci/copy_redist.sh $(make print-image) && ./ci/hashgen.sh`
 print-image:
 	@echo ${.IMAGE}
+
+# Example: 
+# SERVER=docker.io OWNER=alexellis2 TAG=ready make publish
+.PHONY: publish
+publish:
+	@echo  $(SERVER)/$(OWNER)/$(IMG_NAME):$(TAG) && \
+	docker buildx create --use --name=multiarch --node=multiarch && \
+	docker buildx build \
+		--platform linux/amd64,linux/arm/v7,linux/arm64 \
+		--push=true \
+        --build-arg GIT_COMMIT=$(GIT_COMMIT) \
+        --build-arg VERSION=$(VERSION) \
+		--tag $(SERVER)/$(OWNER)/$(IMG_NAME):$(TAG) \
+		.

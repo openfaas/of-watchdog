@@ -14,8 +14,8 @@ github.com/golang/protobuf/ptypes/timestamp
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 ## explicit
 github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/openfaas/faas-middleware v1.0.0
-## explicit
+# github.com/openfaas/faas-middleware v1.1.0
+## explicit; go 1.18
 github.com/openfaas/faas-middleware/concurrency-limiter
 # github.com/prometheus/client_golang v1.11.1
 ## explicit; go 1.13
