@@ -4,6 +4,7 @@
 package executor
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -23,87 +24,78 @@ type SerializingForkFunctionRunner struct {
 // Run run a fork for each invocation
 func (f *SerializingForkFunctionRunner) Run(req FunctionRequest, w http.ResponseWriter) error {
 	start := time.Now()
-	functionBytes, err := serializeFunction(req, f)
+	body, err := serializeFunction(req, f)
 	if err != nil {
 		w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(start).Seconds()))
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
 		return err
 	}
+
 	w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(start).Seconds()))
 	w.WriteHeader(200)
 
-	if functionBytes != nil {
-		_, err = w.Write(*functionBytes)
-	} else {
-		log.Println("Empty function response.")
+	if body != nil {
+		_, err = w.Write(*body)
 	}
 
 	return err
 }
 
 func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*[]byte, error) {
-	log.Printf("Running %s", req.Process)
+	log.Printf("Running: %s", req.Process)
+
+	if req.InputReader != nil {
+		defer req.InputReader.Close()
+	}
 
 	start := time.Now()
-	cmd := exec.Command(req.Process, req.ProcessArgs...)
-	cmd.Env = req.Environment
 
-	var timer *time.Timer
-	if f.ExecTimeout > time.Millisecond*0 {
-
-		timer = time.NewTimer(f.ExecTimeout)
-		go func() {
-			<-timer.C
-
-			log.Printf("Function was killed by ExecTimeout: %s\n", f.ExecTimeout.String())
-			killErr := cmd.Process.Kill()
-			if killErr != nil {
-				log.Println("Error killing function due to ExecTimeout", killErr)
-			}
-		}()
+	var cmd *exec.Cmd
+	ctx := context.Background()
+	if f.ExecTimeout.Nanoseconds() > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, f.ExecTimeout)
+		defer cancel()
 	}
 
-	if timer != nil {
-		defer timer.Stop()
-	}
+	cmd = exec.CommandContext(ctx, req.Process, req.ProcessArgs...)
 
 	var data []byte
 
-	// Read request if present.
-	if req.ContentLength != nil {
-		defer req.InputReader.Close()
-		limitReader := io.LimitReader(req.InputReader, *req.ContentLength)
-		var err error
-		data, err = ioutil.ReadAll(limitReader)
+	reader := req.InputReader.(io.Reader)
 
-		if err != nil {
-			return nil, err
-		}
+	// Limit read to the Content-Length header, if provided
+	if req.ContentLength != nil && *req.ContentLength > 0 {
+		reader = io.LimitReader(req.InputReader, *req.ContentLength)
+	}
 
+	var err error
+	data, err = ioutil.ReadAll(reader)
+
+	if err != nil {
+		return nil, err
 	}
 
 	stdout, _ := cmd.StdoutPipe()
 	stdin, _ := cmd.StdinPipe()
 
-	err := cmd.Start()
-	if err != nil {
+	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
 
 	functionRes, errors := pipeToProcess(stdin, stdout, &data)
-
 	if len(errors) > 0 {
 		return nil, errors[0]
 	}
 
-	waitErr := cmd.Wait()
-	if waitErr != nil {
-		return nil, err
+	err = cmd.Wait()
+	done := time.Since(start)
+	if err != nil {
+		return nil, fmt.Errorf("%s exited: after %.2fs, error: %s", req.Process, done.Seconds(), err)
 	}
 
-	done := time.Since(start)
-	log.Printf("Took %f secs", done.Seconds())
+	log.Printf("%s done: %.2fs secs", req.Process, done.Seconds())
 
 	return functionRes, nil
 }

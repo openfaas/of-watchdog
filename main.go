@@ -66,12 +66,18 @@ func main() {
 	}
 
 	requestHandler := buildRequestHandler(watchdogConfig, watchdogConfig.PrefixLogs)
+	var limit *limiter.ConcurrencyLimiter
+	if watchdogConfig.MaxInflight > 0 {
+		limit = limiter.NewConcurrencyLimiter(requestHandler, watchdogConfig.MaxInflight)
+		requestHandler = limit.Handler()
+	}
 
 	log.Printf("Watchdog mode: %s\n", config.WatchdogMode(watchdogConfig.OperationalMode))
 
 	httpMetrics := metrics.NewHttp()
 	http.HandleFunc("/", metrics.InstrumentHandler(requestHandler, httpMetrics))
 	http.HandleFunc("/_/health", makeHealthHandler())
+	http.HandleFunc("/_/ready", makeReadyHandler(limit))
 
 	metricsServer := metrics.MetricsServer{}
 	metricsServer.Register(watchdogConfig.MetricsPort)
@@ -175,7 +181,7 @@ func buildRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs bool) 
 
 	switch watchdogConfig.OperationalMode {
 	case config.ModeStreaming:
-		requestHandler = makeForkRequestHandler(watchdogConfig, prefixLogs, watchdogConfig.LogBufferSize)
+		requestHandler = makeStreamingRequestHandler(watchdogConfig, prefixLogs, watchdogConfig.LogBufferSize)
 	case config.ModeSerializing:
 		requestHandler = makeSerializingForkRequestHandler(watchdogConfig, prefixLogs)
 	case config.ModeHTTP:
@@ -184,10 +190,6 @@ func buildRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs bool) 
 		requestHandler = makeStaticRequestHandler(watchdogConfig)
 	default:
 		log.Panicf("unknown watchdog mode: %d", watchdogConfig.OperationalMode)
-	}
-
-	if watchdogConfig.MaxInflight > 0 {
-		return limiter.NewConcurrencyLimiter(requestHandler, watchdogConfig.MaxInflight)
 	}
 
 	return requestHandler
@@ -245,8 +247,8 @@ func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig, log
 	}
 }
 
-func makeForkRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs bool, logBufferSize int) func(http.ResponseWriter, *http.Request) {
-	functionInvoker := executor.ForkFunctionRunner{
+func makeStreamingRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs bool, logBufferSize int) func(http.ResponseWriter, *http.Request) {
+	functionInvoker := executor.StreamingFunctionRunner{
 		ExecTimeout:   watchdogConfig.ExecTimeout,
 		LogPrefix:     prefixLogs,
 		LogBufferSize: logBufferSize,
@@ -323,7 +325,7 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs boo
 
 	urlValue, err := url.Parse(watchdogConfig.UpstreamURL)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf(`For "mode=http" you must specify a valid URL for "http_upstream_url", error: %s`, err)
 	}
 
 	functionInvoker.UpstreamURL = urlValue
@@ -356,7 +358,7 @@ func makeStaticRequestHandler(watchdogConfig config.WatchdogConfig) http.Handler
 		log.Fatal(`For mode=static you must specify the "static_path" to serve`)
 	}
 
-	log.Printf("Serving files at %s", watchdogConfig.StaticPath)
+	log.Printf("Serving files at: %s", watchdogConfig.StaticPath)
 	return http.FileServer(http.Dir(watchdogConfig.StaticPath)).ServeHTTP
 }
 
@@ -369,11 +371,32 @@ func lockFilePresent() bool {
 	return true
 }
 
+func makeReadyHandler(limit *limiter.ConcurrencyLimiter) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			status := http.StatusOK
+
+			if atomic.LoadInt32(&acceptingConnections) == 0 || !lockFilePresent() {
+				status = http.StatusServiceUnavailable
+			} else if limit != nil {
+				if limit.Met() {
+					status = http.StatusTooManyRequests
+				}
+			}
+
+			w.WriteHeader(status)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}
+}
+
 func makeHealthHandler() func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			if atomic.LoadInt32(&acceptingConnections) == 0 || lockFilePresent() == false {
+			if atomic.LoadInt32(&acceptingConnections) == 0 || !lockFilePresent() {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				return
 			}
