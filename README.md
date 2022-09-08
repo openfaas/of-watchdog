@@ -24,6 +24,10 @@ There are several modes available for the of-watchdog which changes how it inter
 
 > A comparison of three watchdog modes. Top left - Classic Watchdog, top right: afterburn (deprecated), bottom left HTTP mode from of-watchdog.
 
+1) HTTP mode - the default and most efficient option all template authors should consider this option if the target language has a HTTP server implementation.
+2) Serializing mode - for when a HTTP server implementation doesn't exist, STDIO is read into memory then sent into a forked process.
+3) Streaming mode - as per serializing mode, however the request and response are both streamed instead of being buffered completely into memory before the function starts running.
+
 ### API
 
 Private endpoints, served by watchdog:
