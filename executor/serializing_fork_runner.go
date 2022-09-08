@@ -6,7 +6,6 @@ package executor
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os/exec"
@@ -26,12 +25,12 @@ func (f *SerializingForkFunctionRunner) Run(req FunctionRequest, w http.Response
 	functionBytes, err := serializeFunction(req, f)
 	if err != nil {
 		w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(start).Seconds()))
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return err
 	}
 	w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(start).Seconds()))
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 
 	if functionBytes != nil {
 		_, err = w.Write(*functionBytes)
@@ -75,7 +74,7 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 		defer req.InputReader.Close()
 		limitReader := io.LimitReader(req.InputReader, *req.ContentLength)
 		var err error
-		data, err = ioutil.ReadAll(limitReader)
+		data, err = io.ReadAll(limitReader)
 
 		if err != nil {
 			return nil, err
@@ -137,7 +136,7 @@ func pipeToProcess(stdin io.WriteCloser, stdout io.Reader, data *[]byte) (*[]byt
 
 	go func(c chan error) {
 		var err error
-		result, err := ioutil.ReadAll(stdout)
+		result, err := io.ReadAll(stdout)
 		functionResult = &result
 		if err != nil {
 			c <- err

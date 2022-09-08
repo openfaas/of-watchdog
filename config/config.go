@@ -209,11 +209,7 @@ func getInt(env map[string]string, key string, defaultValue int) int {
 }
 
 func getBool(env map[string]string, key string) bool {
-	if env[key] == "true" {
-		return true
-	}
-
-	return false
+	return env[key] == "true"
 }
 
 func getBools(env map[string]string, key ...string) bool {

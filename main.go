@@ -7,7 +7,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -111,7 +110,7 @@ func markUnhealthy() error {
 	return removeErr
 }
 
-func listenUntilShutdown(s *http.Server, healthcheckInterval time.Duration, writeTimeout time.Duration, suppressLock bool, httpMetrics *metrics.Http) {
+func listenUntilShutdown(s *http.Server, healthcheckInterval, writeTimeout time.Duration, suppressLock bool, httpMetrics *metrics.Http) {
 
 	idleConnsClosed := make(chan struct{})
 	go func() {
@@ -204,9 +203,8 @@ func createLockFile() (string, error) {
 		return path, mkdirErr
 	}
 
-	writeErr := ioutil.WriteFile(path, []byte{}, 0660)
-	if writeErr != nil {
-		return path, writeErr
+	if err := os.WriteFile(path, []byte{}, 0660); err != nil {
+		return path, err
 	}
 
 	atomic.StoreInt32(&acceptingConnections, 1)
@@ -286,7 +284,7 @@ func getEnvironment(r *http.Request) []string {
 
 	envs = os.Environ()
 	for k, v := range r.Header {
-		kv := fmt.Sprintf("Http_%s=%s", strings.Replace(k, "-", "_", -1), v[0])
+		kv := fmt.Sprintf("Http_%s=%s", strings.ReplaceAll(k, "-", "_"), v[0])
 		envs = append(envs, kv)
 	}
 	envs = append(envs, fmt.Sprintf("Http_Method=%s", r.Method))
@@ -345,7 +343,7 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs boo
 		}
 
 		if err := functionInvoker.Run(req, r.ContentLength, r, w); err != nil {
-			w.WriteHeader(500)
+			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 		}
 	}
@@ -380,7 +378,6 @@ func makeHealthHandler() func(http.ResponseWriter, *http.Request) {
 
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
-
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
