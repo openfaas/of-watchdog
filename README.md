@@ -163,6 +163,7 @@ Environmental variables:
 | `http_buffer_req_body` |  `http` mode only - buffers request body in memory before forwarding upstream to your template's `upstream_url`. Use if your upstream HTTP server does not accept `Transfer-Encoding: chunked`, for example WSGI tends to require this setting. Default: `false`                |
 | `buffer_http`          |  deprecated alias for `http_buffer_req_body`, will be removed in future version    |
 | `static_path`          |  Absolute or relative path to the directory that will be served if `mode="static"` |
+| `function_ready_endpoint` | When non-empty, requests to `/_/ready` will invoke the function handler with this path. This can be used to provide custom readiness logic. When `max_inflight` is set, the concurrency limit is checked first before proxying the request to the function. |
 
 Unsupported options from the [Classic Watchdog](https://github.com/openfaas/classic-watchdog):
 

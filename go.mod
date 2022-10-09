@@ -18,3 +18,5 @@ require (
 	golang.org/x/sys v0.0.0-20210603081109-ebe580a85c40 // indirect
 	google.golang.org/protobuf v1.26.0-rc.1 // indirect
 )
+
+replace github.com/openfaas/faas-middleware => github.com/LucasRoesler/faas-middleware v0.0.0-20221009175005-34767291688a

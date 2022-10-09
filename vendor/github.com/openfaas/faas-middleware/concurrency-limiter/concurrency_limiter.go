@@ -39,6 +39,10 @@ type ConcurrencyLimiter struct {
 }
 
 func (cl *ConcurrencyLimiter) Met() bool {
+	if cl == nil {
+		return false
+	}
+
 	// We should not have any ConcurrencyLimiter created with a limit of 0
 	// but return early if that's the case.
 	if cl.maxInflightRequests == 0 {
@@ -55,6 +59,7 @@ func (cl *ConcurrencyLimiter) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	// but we'll check anyway and return early.
 	if cl.maxInflightRequests == 0 {
 		cl.backendHTTPHandler.ServeHTTP(w, r)
+		return
 	}
 
 	requestsStarted := atomic.AddUint64(&cl.requestsStarted, 1)
@@ -62,7 +67,13 @@ func (cl *ConcurrencyLimiter) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if requestsStarted-completedRequested > cl.maxInflightRequests {
 		// This is a failure pathway, and we do not want to block on the write to finish
 		atomic.AddUint64(&cl.requestsCompleted, 1)
+
+		// Some APIs only return JSON, since we can interfere here and send a plain/text
+		// message, let's do the right thing so that downstream users can consume it.
+		w.Header().Add("Content-Type", "text/plain")
+
 		w.WriteHeader(http.StatusTooManyRequests)
+
 		fmt.Fprintf(w, "Concurrent request limit exceeded. Max concurrent requests: %d\n", cl.maxInflightRequests)
 		return
 	}

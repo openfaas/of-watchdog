@@ -65,6 +65,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	if watchdogConfig.ReadyEndpoint != "" {
+		log.Printf("Using function ready endpoint: %q", watchdogConfig.ReadyEndpoint)
+	}
+
 	requestHandler := buildRequestHandler(watchdogConfig, watchdogConfig.PrefixLogs)
 	var limit *limiter.ConcurrencyLimiter
 	if watchdogConfig.MaxInflight > 0 {
@@ -77,7 +81,12 @@ func main() {
 	httpMetrics := metrics.NewHttp()
 	http.HandleFunc("/", metrics.InstrumentHandler(requestHandler, httpMetrics))
 	http.HandleFunc("/_/health", makeHealthHandler())
-	http.HandleFunc("/_/ready", makeReadyHandler(limit))
+	http.Handle("/_/ready", &readiness{
+		functionHandler: requestHandler,
+		endpoint:        watchdogConfig.ReadyEndpoint,
+		lockCheck:       lockFilePresent,
+		limiter:         limit,
+	})
 
 	metricsServer := metrics.MetricsServer{}
 	metricsServer.Register(watchdogConfig.MetricsPort)
@@ -371,25 +380,52 @@ func lockFilePresent() bool {
 	return true
 }
 
-func makeReadyHandler(limit *limiter.ConcurrencyLimiter) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			status := http.StatusOK
+type readiness struct {
+	functionHandler http.Handler
+	endpoint        string
+	lockCheck       func() bool
+	limiter         Limiter
+}
 
-			if atomic.LoadInt32(&acceptingConnections) == 0 || !lockFilePresent() {
-				status = http.StatusServiceUnavailable
-			} else if limit != nil {
-				if limit.Met() {
-					status = http.StatusTooManyRequests
-				}
+func (r *readiness) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	switch req.Method {
+	case http.MethodGet:
+		status := http.StatusOK
+
+		switch {
+		case atomic.LoadInt32(&acceptingConnections) == 0, !r.lockCheck():
+			status = http.StatusServiceUnavailable
+		case r.limiter.Met():
+			status = http.StatusTooManyRequests
+		case r.endpoint != "":
+			upstream := url.URL{
+				Scheme: req.URL.Scheme,
+				Host:   req.URL.Host,
+				Path:   r.endpoint,
 			}
 
-			w.WriteHeader(status)
-		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			readyReq, err := http.NewRequestWithContext(req.Context(), http.MethodGet, upstream.String(), nil)
+			if err != nil {
+				log.Printf("Error creating readiness request: %s", err)
+				status = http.StatusInternalServerError
+				break
+			}
+
+			// we need to set the raw RequestURI for the function invoker to see our URL path,
+			// otherwise it will just route to `/`, typically this shouldn't be used or set
+			readyReq.RequestURI = r.endpoint
+			r.functionHandler.ServeHTTP(w, readyReq)
+			return
 		}
+
+		w.WriteHeader(status)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+type Limiter interface {
+	Met() bool
 }
 
 func makeHealthHandler() func(http.ResponseWriter, *http.Request) {
