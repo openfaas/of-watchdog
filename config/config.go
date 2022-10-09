@@ -48,6 +48,10 @@ type WatchdogConfig struct {
 
 	// LogBufferSize is the size for scanning logs for stdout/stderr
 	LogBufferSize int
+
+	// ReadyEndpoint is the custom readiness path for the watchdog. When non-empty
+	// the /_/ready endpoint with proxy the request to this path.
+	ReadyEndpoint string
 }
 
 // Process returns a string for the process and a slice for the arguments from the FunctionProcess.
@@ -139,6 +143,7 @@ func New(env []string) (WatchdogConfig, error) {
 		MaxInflight:         getInt(envMap, "max_inflight", 0),
 		PrefixLogs:          prefixLogs,
 		LogBufferSize:       logBufferSize,
+		ReadyEndpoint:       envMap["function_ready_endpoint"],
 	}
 
 	if val := envMap["mode"]; len(val) > 0 {

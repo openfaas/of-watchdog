@@ -1,4 +1,6 @@
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
+github.com/LucasRoesler/faas-middleware v0.0.0-20221009175005-34767291688a h1:HKZa7gP492/iibryQLsj+r/5JkEO8bn2YU4WktW6RNs=
+github.com/LucasRoesler/faas-middleware v0.0.0-20221009175005-34767291688a/go.mod h1:RgkVC/llBh+Eqb4bKxcFneB4OMnYsjUrEs7TWrRf51s=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
@@ -58,10 +60,6 @@ github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lN
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
-github.com/openfaas/faas-middleware v1.0.0 h1:3w7v3sxhR55ulfDFfVHcStAKpkf06ufoZtv3pJkifvI=
-github.com/openfaas/faas-middleware v1.0.0/go.mod h1:R5CaeiPy8uo7bWTFJdJJ/9I82XLn6WeXUAjNq2a+afY=
-github.com/openfaas/faas-middleware v1.1.0 h1:i6DaUQxrg4FhMpl/to/VIEL6Aq9K/mo9EpRs0JPIqtI=
-github.com/openfaas/faas-middleware v1.1.0/go.mod h1:RgkVC/llBh+Eqb4bKxcFneB4OMnYsjUrEs7TWrRf51s=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

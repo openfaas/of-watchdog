@@ -1,11 +1,11 @@
 
-.GIT_COMMIT=$(shell git rev-parse HEAD)
-.GIT_VERSION=$(shell git describe --tags --always --dirty 2>/dev/null)
-.GIT_UNTRACKEDCHANGES := $(shell git status --porcelain --untracked-files=no)
-ifneq ($(.GIT_UNTRACKEDCHANGES),)
-	.GIT_VERSION := $(.GIT_VERSION)-$(shell date +"%s")
+GIT_COMMIT=$(shell git rev-parse HEAD)
+GIT_VERSION=$(shell git describe --tags --always --dirty 2>/dev/null)
+GIT_UNTRACKEDCHANGES := $(shell git status --porcelain --untracked-files=no)
+ifneq ($(GIT_UNTRACKEDCHANGES),)
+	GIT_VERSION := $(GIT_VERSION)-$(shell date +"%s")
 endif
-LDFLAGS := "-s -w -X main.Version=$(.GIT_VERSION) -X main.GitCommit=$(.GIT_COMMIT)"
+LDFLAGS := "-s -w -X main.Version=$(GIT_VERSION) -X main.GitCommit=$(GIT_COMMIT)"
 
 SERVER?=ghcr.io
 OWNER?=openfaas
@@ -32,9 +32,9 @@ gofmt:
 build:
 	@echo "+ $@"
 	@docker build \
-		--build-arg GIT_COMMIT=${.GIT_COMMIT} \
-		--build-arg VERSION=${.GIT_VERSION} \
-		-t ${.IMAGE}:${TAG} .
+		--build-arg GIT_COMMIT=${GIT_COMMIT} \
+		--build-arg VERSION=${GIT_VERSION} \
+		-t $(SERVER)/$(OWNER)/$(IMG_NAME):$(TAG) .
 
 .PHONY: hashgen
 hashgen:
@@ -53,7 +53,7 @@ dist:
 print-image:
 	@echo ${.IMAGE}
 
-# Example: 
+# Example:
 # SERVER=docker.io OWNER=alexellis2 TAG=ready make publish
 .PHONY: publish
 publish:
