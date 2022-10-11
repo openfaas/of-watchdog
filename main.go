@@ -414,6 +414,7 @@ func (r *readiness) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			// we need to set the raw RequestURI for the function invoker to see our URL path,
 			// otherwise it will just route to `/`, typically this shouldn't be used or set
 			readyReq.RequestURI = r.endpoint
+			readyReq.Header = req.Header.Clone()
 			r.functionHandler.ServeHTTP(w, readyReq)
 			return
 		}
