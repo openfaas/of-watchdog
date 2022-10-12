@@ -21,7 +21,7 @@ type StreamingFunctionRunner struct {
 
 // Run run a fork for each invocation
 func (f *StreamingFunctionRunner) Run(req FunctionRequest) error {
-	log.Printf("Running: %s", req.Process)
+	log.Printf("Running: %s - %s", req.Process, req.Path)
 	start := time.Now()
 
 	var cmd *exec.Cmd

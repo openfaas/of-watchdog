@@ -61,19 +61,21 @@ func main() {
 
 	watchdogConfig, err := config.New(os.Environ())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err.Error())
+		fmt.Fprintf(os.Stderr, "Error loading config: %s", err.Error())
 		os.Exit(1)
 	}
 
-	if watchdogConfig.ReadyEndpoint != "" {
-		log.Printf("Using function ready endpoint: %q", watchdogConfig.ReadyEndpoint)
-	}
+	// baseFunctionHandler is the function invoker without any other middlewares.
+	// It is used to provide a generic way to implement the readiness checks regardless
+	// of the request mode.
+	baseFunctionHandler := buildRequestHandler(watchdogConfig, watchdogConfig.PrefixLogs)
+	requestHandler := baseFunctionHandler
 
-	requestHandler := buildRequestHandler(watchdogConfig, watchdogConfig.PrefixLogs)
-	var limit *limiter.ConcurrencyLimiter
+	var limit limiter.Limiter
 	if watchdogConfig.MaxInflight > 0 {
-		limit = limiter.NewConcurrencyLimiter(requestHandler, watchdogConfig.MaxInflight)
-		requestHandler = limit.Handler()
+		requestLimiter := limiter.NewConcurrencyLimiter(requestHandler, watchdogConfig.MaxInflight)
+		requestHandler = requestLimiter.Handler()
+		limit = requestLimiter
 	}
 
 	log.Printf("Watchdog mode: %s\n", config.WatchdogMode(watchdogConfig.OperationalMode))
@@ -82,7 +84,9 @@ func main() {
 	http.HandleFunc("/", metrics.InstrumentHandler(requestHandler, httpMetrics))
 	http.HandleFunc("/_/health", makeHealthHandler())
 	http.Handle("/_/ready", &readiness{
-		functionHandler: requestHandler,
+		// make sure to pass original handler, before it's been wrapped by
+		// the limiter
+		functionHandler: baseFunctionHandler,
 		endpoint:        watchdogConfig.ReadyEndpoint,
 		lockCheck:       lockFilePresent,
 		limiter:         limit,
@@ -238,6 +242,10 @@ func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig, log
 			environment = getEnvironment(r)
 		}
 
+		path := "/"
+		if r.URL != nil {
+			path = r.URL.Path
+		}
 		commandName, arguments := watchdogConfig.Process()
 		req := executor.FunctionRequest{
 			Process:       commandName,
@@ -246,6 +254,7 @@ func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig, log
 			ContentLength: &r.ContentLength,
 			OutputWriter:  w,
 			Environment:   environment,
+			Path:          path,
 		}
 
 		w.Header().Set("Content-Type", watchdogConfig.ContentType)
@@ -271,6 +280,10 @@ func makeStreamingRequestHandler(watchdogConfig config.WatchdogConfig, prefixLog
 			environment = getEnvironment(r)
 		}
 
+		path := "/"
+		if r.URL != nil {
+			path = r.URL.Path
+		}
 		commandName, arguments := watchdogConfig.Process()
 		req := executor.FunctionRequest{
 			Process:      commandName,
@@ -278,6 +291,7 @@ func makeStreamingRequestHandler(watchdogConfig config.WatchdogConfig, prefixLog
 			InputReader:  r.Body,
 			OutputWriter: w,
 			Environment:  environment,
+			Path:         path,
 		}
 
 		w.Header().Set("Content-Type", watchdogConfig.ContentType)
@@ -285,9 +299,8 @@ func makeStreamingRequestHandler(watchdogConfig config.WatchdogConfig, prefixLog
 		if err != nil {
 			log.Println(err.Error())
 
-			// Probably cannot write to client if we already have written a header
-			// w.WriteHeader(500)
-			// w.Write([]byte(err.Error()))
+			// Cannot write a status code to the client because we
+			// already have written a header
 		}
 	}
 }
@@ -344,11 +357,16 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs boo
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		path := "/"
+		if r.URL != nil {
+			path = r.URL.Path
+		}
 		req := executor.FunctionRequest{
 			Process:      commandName,
 			ProcessArgs:  arguments,
 			InputReader:  r.Body,
 			OutputWriter: w,
+			Path:         path,
 		}
 
 		if r.Body != nil {
@@ -373,67 +391,18 @@ func makeStaticRequestHandler(watchdogConfig config.WatchdogConfig) http.Handler
 
 func lockFilePresent() bool {
 	path := filepath.Join(os.TempDir(), ".lock")
-
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return false
 	}
+
 	return true
-}
-
-type readiness struct {
-	functionHandler http.Handler
-	endpoint        string
-	lockCheck       func() bool
-	limiter         Limiter
-}
-
-func (r *readiness) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	switch req.Method {
-	case http.MethodGet:
-		status := http.StatusOK
-
-		switch {
-		case atomic.LoadInt32(&acceptingConnections) == 0, !r.lockCheck():
-			status = http.StatusServiceUnavailable
-		case r.limiter.Met():
-			status = http.StatusTooManyRequests
-		case r.endpoint != "":
-			upstream := url.URL{
-				Scheme: req.URL.Scheme,
-				Host:   req.URL.Host,
-				Path:   r.endpoint,
-			}
-
-			readyReq, err := http.NewRequestWithContext(req.Context(), http.MethodGet, upstream.String(), nil)
-			if err != nil {
-				log.Printf("Error creating readiness request: %s", err)
-				status = http.StatusInternalServerError
-				break
-			}
-
-			// we need to set the raw RequestURI for the function invoker to see our URL path,
-			// otherwise it will just route to `/`, typically this shouldn't be used or set
-			readyReq.RequestURI = r.endpoint
-			readyReq.Header = req.Header.Clone()
-			r.functionHandler.ServeHTTP(w, readyReq)
-			return
-		}
-
-		w.WriteHeader(status)
-	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}
-
-type Limiter interface {
-	Met() bool
 }
 
 func makeHealthHandler() func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			if atomic.LoadInt32(&acceptingConnections) == 0 || !lockFilePresent() {
+			if atomic.LoadInt32(&acceptingConnections) == 0 || lockFilePresent() == false {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				return
 			}

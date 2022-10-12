@@ -14,6 +14,7 @@ type FunctionRunner interface {
 
 // FunctionRequest stores request for function execution
 type FunctionRequest struct {
+	Path        string
 	Process     string
 	ProcessArgs []string
 	Environment []string
