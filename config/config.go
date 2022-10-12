@@ -143,7 +143,7 @@ func New(env []string) (WatchdogConfig, error) {
 		MaxInflight:         getInt(envMap, "max_inflight", 0),
 		PrefixLogs:          prefixLogs,
 		LogBufferSize:       logBufferSize,
-		ReadyEndpoint:       envMap["function_ready_endpoint"],
+		ReadyEndpoint:       envMap["ready_path"],
 	}
 
 	if val := envMap["mode"]; len(val) > 0 {
