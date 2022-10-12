@@ -69,7 +69,12 @@ func main() {
 		log.Printf("Using function ready endpoint: %q", watchdogConfig.ReadyEndpoint)
 	}
 
-	requestHandler := buildRequestHandler(watchdogConfig, watchdogConfig.PrefixLogs)
+	// baseFunctionHandler is the function invoker without any other middlewares.
+	// It is used to provide a generic way to implement the readiness checks regardless
+	// of the request mode.
+	baseFunctionHandler := buildRequestHandler(watchdogConfig, watchdogConfig.PrefixLogs)
+	requestHandler := baseFunctionHandler
+
 	var limit *limiter.ConcurrencyLimiter
 	if watchdogConfig.MaxInflight > 0 {
 		limit = limiter.NewConcurrencyLimiter(requestHandler, watchdogConfig.MaxInflight)
@@ -82,7 +87,8 @@ func main() {
 	http.HandleFunc("/", metrics.InstrumentHandler(requestHandler, httpMetrics))
 	http.HandleFunc("/_/health", makeHealthHandler())
 	http.Handle("/_/ready", &readiness{
-		functionHandler: requestHandler,
+		// make sure to pass the unwrapped handler to the readiness handler
+		functionHandler: baseFunctionHandler,
 		endpoint:        watchdogConfig.ReadyEndpoint,
 		lockCheck:       lockFilePresent,
 		limiter:         limit,
@@ -381,6 +387,10 @@ func lockFilePresent() bool {
 }
 
 type readiness struct {
+	// functionHandler is the function invoke HTTP Handler. Using this allows
+	// custom ready checks in all invoke modes. For example, in forking mode
+	// the handler implementation (a bash script) can check the path in the env
+	// and respond accordingly, exit non-zero when not ready.
 	functionHandler http.Handler
 	endpoint        string
 	lockCheck       func() bool
