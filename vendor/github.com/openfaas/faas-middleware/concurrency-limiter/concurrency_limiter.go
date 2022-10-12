@@ -6,6 +6,11 @@ import (
 	"sync/atomic"
 )
 
+// Limiter is an interface that can be used to check if a limit has been met.
+type Limiter interface {
+	Met() bool
+}
+
 type ConcurrencyLimiter struct {
 	backendHTTPHandler http.Handler
 	/*
@@ -39,10 +44,6 @@ type ConcurrencyLimiter struct {
 }
 
 func (cl *ConcurrencyLimiter) Met() bool {
-	if cl == nil {
-		return false
-	}
-
 	// We should not have any ConcurrencyLimiter created with a limit of 0
 	// but return early if that's the case.
 	if cl.maxInflightRequests == 0 {
