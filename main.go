@@ -7,6 +7,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -18,6 +19,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	units "github.com/docker/go-units"
 
 	limiter "github.com/openfaas/faas-middleware/concurrency-limiter"
 	"github.com/openfaas/of-watchdog/config"
@@ -78,7 +81,7 @@ func main() {
 		limit = requestLimiter
 	}
 
-	log.Printf("Watchdog mode: %s\n", config.WatchdogMode(watchdogConfig.OperationalMode))
+	log.Printf("Watchdog mode: %s\tfprocess: %q\n", config.WatchdogMode(watchdogConfig.OperationalMode), watchdogConfig.FunctionProcess)
 
 	httpMetrics := metrics.NewHttp()
 	http.HandleFunc("/", metrics.InstrumentHandler(requestHandler, httpMetrics))
@@ -242,10 +245,6 @@ func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig, log
 			environment = getEnvironment(r)
 		}
 
-		path := "/"
-		if r.URL != nil {
-			path = r.URL.Path
-		}
 		commandName, arguments := watchdogConfig.Process()
 		req := executor.FunctionRequest{
 			Process:       commandName,
@@ -254,7 +253,9 @@ func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig, log
 			ContentLength: &r.ContentLength,
 			OutputWriter:  w,
 			Environment:   environment,
-			Path:          path,
+			RequestURI:    r.RequestURI,
+			Method:        r.Method,
+			UserAgent:     r.UserAgent(),
 		}
 
 		w.Header().Set("Content-Type", watchdogConfig.ContentType)
@@ -280,18 +281,19 @@ func makeStreamingRequestHandler(watchdogConfig config.WatchdogConfig, prefixLog
 			environment = getEnvironment(r)
 		}
 
-		path := "/"
-		if r.URL != nil {
-			path = r.URL.Path
-		}
+		ww := WriterCounter{}
+		ww.setWriter(w)
+		start := time.Now()
 		commandName, arguments := watchdogConfig.Process()
 		req := executor.FunctionRequest{
 			Process:      commandName,
 			ProcessArgs:  arguments,
 			InputReader:  r.Body,
-			OutputWriter: w,
+			OutputWriter: &ww,
 			Environment:  environment,
-			Path:         path,
+			RequestURI:   r.RequestURI,
+			Method:       r.Method,
+			UserAgent:    r.UserAgent(),
 		}
 
 		w.Header().Set("Content-Type", watchdogConfig.ContentType)
@@ -301,6 +303,16 @@ func makeStreamingRequestHandler(watchdogConfig config.WatchdogConfig, prefixLog
 
 			// Cannot write a status code to the client because we
 			// already have written a header
+			done := time.Since(start)
+			if !strings.HasPrefix(req.UserAgent, "kube-probe") {
+				log.Printf("%s %s - %d - ContentLength: %s (%.4fs)", req.Method, req.RequestURI, http.StatusInternalServerError, units.HumanSize(float64(ww.Bytes())), done.Seconds())
+				return
+			}
+		}
+
+		done := time.Since(start)
+		if !strings.HasPrefix(req.UserAgent, "kube-probe") {
+			log.Printf("%s %s - %d - ContentLength: %s (%.4fs)", req.Method, req.RequestURI, http.StatusOK, units.HumanSize(float64(ww.Bytes())), done.Seconds())
 		}
 	}
 }
@@ -357,16 +369,11 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs boo
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		path := "/"
-		if r.URL != nil {
-			path = r.URL.Path
-		}
 		req := executor.FunctionRequest{
 			Process:      commandName,
 			ProcessArgs:  arguments,
 			InputReader:  r.Body,
 			OutputWriter: w,
-			Path:         path,
 		}
 
 		if r.Body != nil {
@@ -423,4 +430,27 @@ func printVersion() {
 	}
 
 	log.Printf("Version: %v\tSHA: %v\n", BuildVersion(), sha)
+}
+
+type WriterCounter struct {
+	w     io.Writer
+	bytes int64
+}
+
+func (nc *WriterCounter) setWriter(w io.Writer) {
+	nc.w = w
+}
+
+func (nc *WriterCounter) Bytes() int64 {
+	return nc.bytes
+}
+
+func (nc *WriterCounter) Write(p []byte) (int, error) {
+	n, err := nc.w.Write(p)
+	if err != nil {
+		return n, err
+	}
+
+	nc.bytes += int64(n)
+	return n, err
 }

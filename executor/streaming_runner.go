@@ -5,8 +5,6 @@ package executor
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"time"
@@ -21,8 +19,6 @@ type StreamingFunctionRunner struct {
 
 // Run run a fork for each invocation
 func (f *StreamingFunctionRunner) Run(req FunctionRequest) error {
-	log.Printf("Running: %s - %s", req.Process, req.Path)
-	start := time.Now()
 
 	var cmd *exec.Cmd
 	ctx := context.Background()
@@ -50,13 +46,5 @@ func (f *StreamingFunctionRunner) Run(req FunctionRequest) error {
 		return err
 	}
 
-	err := cmd.Wait()
-	done := time.Since(start)
-	if err != nil {
-		return fmt.Errorf("%s exited: after %.2fs, error: %s", req.Process, done.Seconds(), err)
-	}
-
-	log.Printf("%s done: %.2fs secs", req.Process, done.Seconds())
-
-	return nil
+	return cmd.Wait()
 }
