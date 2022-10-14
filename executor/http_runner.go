@@ -9,6 +9,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+
+	units "github.com/docker/go-units"
+
 	"log"
 	"net"
 	"net/http"
@@ -155,8 +158,9 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	}
 
 	copyHeaders(w.Header(), &res.Header)
+	done := time.Since(startedTime)
 
-	w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
+	w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", done.Seconds()))
 
 	w.WriteHeader(res.StatusCode)
 	if res.Body != nil {
@@ -172,7 +176,7 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	// Exclude logging for health check probes from the kubelet which can spam
 	// log collection systems.
 	if !strings.HasPrefix(r.UserAgent(), "kube-probe") {
-		log.Printf("%s %s - %s - ContentLength: %d", r.Method, r.RequestURI, res.Status, res.ContentLength)
+		log.Printf("%s %s - %s - ContentLength: %s (%.4fs)", r.Method, r.RequestURI, res.Status, units.HumanSize(float64(res.ContentLength)), done.Seconds())
 	}
 
 	return nil

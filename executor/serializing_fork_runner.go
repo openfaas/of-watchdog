@@ -8,9 +8,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+
+	units "github.com/docker/go-units"
+
 	"log"
 	"net/http"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 )
@@ -27,29 +31,41 @@ func (f *SerializingForkFunctionRunner) Run(req FunctionRequest, w http.Response
 	body, err := serializeFunction(req, f)
 	if err != nil {
 		w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(start).Seconds()))
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
+
+		done := time.Since(start)
+
+		if !strings.HasPrefix(req.UserAgent, "kube-probe") {
+			log.Printf("%s %s - %d - ContentLength: %s (%.4fs)", req.Method, req.RequestURI, http.StatusOK, units.HumanSize(float64(len(err.Error()))), done.Seconds())
+		}
+
 		return err
 	}
 
 	w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(start).Seconds()))
 	w.WriteHeader(200)
 
+	bodyLen := 0
 	if body != nil {
 		_, err = w.Write(*body)
+		bodyLen = len(*body)
+	}
+
+	done := time.Since(start)
+
+	if !strings.HasPrefix(req.UserAgent, "kube-probe") {
+		log.Printf("%s %s - %d - ContentLength: %s (%.4fs)", req.Method, req.RequestURI, http.StatusOK, units.HumanSize(float64(bodyLen)), done.Seconds())
 	}
 
 	return err
 }
 
 func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*[]byte, error) {
-	log.Printf("Running: %s", req.Process)
 
 	if req.InputReader != nil {
 		defer req.InputReader.Close()
 	}
-
-	start := time.Now()
 
 	var cmd *exec.Cmd
 	ctx := context.Background()
@@ -60,21 +76,25 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 	}
 
 	cmd = exec.CommandContext(ctx, req.Process, req.ProcessArgs...)
+	cmd.Env = req.Environment
 
 	var data []byte
 
-	reader := req.InputReader.(io.Reader)
+	if req.InputReader != nil {
+		reader := req.InputReader.(io.Reader)
 
-	// Limit read to the Content-Length header, if provided
-	if req.ContentLength != nil && *req.ContentLength > 0 {
-		reader = io.LimitReader(req.InputReader, *req.ContentLength)
-	}
+		// Limit read to the Content-Length header, if provided
+		if req.ContentLength != nil && *req.ContentLength > 0 {
+			reader = io.LimitReader(req.InputReader, *req.ContentLength)
+		}
 
-	var err error
-	data, err = ioutil.ReadAll(reader)
+		var err error
+		data, err = ioutil.ReadAll(reader)
 
-	if err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
+
 	}
 
 	stdout, _ := cmd.StdoutPipe()
@@ -89,15 +109,9 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 		return nil, errors[0]
 	}
 
-	err = cmd.Wait()
-	done := time.Since(start)
-	if err != nil {
-		return nil, fmt.Errorf("%s exited: after %.2fs, error: %s", req.Process, done.Seconds(), err)
-	}
+	err := cmd.Wait()
 
-	log.Printf("%s done: %.2fs secs", req.Process, done.Seconds())
-
-	return functionRes, nil
+	return functionRes, err
 }
 
 func pipeToProcess(stdin io.WriteCloser, stdout io.Reader, data *[]byte) (*[]byte, []error) {

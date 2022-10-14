@@ -3,6 +3,7 @@ module github.com/openfaas/of-watchdog
 go 1.18
 
 require (
+	github.com/docker/go-units v0.5.0
 	github.com/openfaas/faas-middleware v1.2.2
 	github.com/prometheus/client_golang v1.13.0
 )
