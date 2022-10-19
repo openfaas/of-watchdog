@@ -28,7 +28,7 @@
 <!--- Include as many relevant details about the environment you experienced the bug in -->
 * Docker version `docker version` (e.g. Docker 17.0.05 ):
 
-* Are you using Docker Swarm or Kubernetes (FaaS-netes)?
+* Are you using Kubernetes or faasd?
 
 * Operating System and version (e.g. Linux, Windows, MacOS):
 
