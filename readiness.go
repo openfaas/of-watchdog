@@ -38,8 +38,6 @@ func (r *readiness) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		case atomic.LoadInt32(&acceptingConnections) == 0, !r.lockCheck():
 			status = http.StatusServiceUnavailable
 		case r.LimitMet():
-			log.Println("Limited")
-
 			status = http.StatusTooManyRequests
 		case r.endpoint != "":
 			upstream := url.URL{
