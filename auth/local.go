@@ -2,15 +2,21 @@ package auth
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/topdown"
+	"github.com/open-policy-agent/opa/types"
 )
 
 // Policy is the OPA policy configuration method, which is returned from
@@ -59,6 +65,45 @@ func NewLocalAuthorizer(policy Policy, cfg OPAConfig) (_ Authorizer, err error) 
 	r := rego.New(
 		rego.Query(cfg.Query),
 		policy,
+		rego.Function2(
+			&rego.Function{
+				Name: "bcrypt_eq",
+				Decl: types.NewFunction(types.Args(types.S, types.S), types.B),
+			},
+			func(_ rego.BuiltinContext, hash *ast.Term, pwd *ast.Term) (*ast.Term, error) {
+				hashStr, ok := hash.Value.(ast.String)
+				if !ok {
+					return nil, errors.New("Hash must be a string")
+				}
+
+				pwdStr, ok := pwd.Value.(ast.String)
+				if !ok {
+					return nil, errors.New("Password must be a string")
+				}
+
+				err := bcrypt.CompareHashAndPassword([]byte(hashStr), []byte(pwdStr))
+				return ast.BooleanTerm(err == nil), nil
+			},
+		),
+		rego.Function2(
+			&rego.Function{
+				Name: "constant_compare",
+				Decl: types.NewFunction(types.Args(types.S, types.S), types.B),
+			},
+			func(_ rego.BuiltinContext, value1Term *ast.Term, value2Term *ast.Term) (*ast.Term, error) {
+				value1, ok := value1Term.Value.(ast.String)
+				if !ok {
+					return nil, errors.New("Value 1 must be a string")
+				}
+
+				value2, ok := value2Term.Value.(ast.String)
+				if !ok {
+					return nil, errors.New("Value 2 must be a string")
+				}
+
+				return ast.BooleanTerm(subtle.ConstantTimeCompare([]byte(value1), []byte(value2)) == 1), nil
+			},
+		),
 		rego.EnablePrintStatements(cfg.Debug),
 		rego.PrintHook(topdown.NewPrintHook(log.Writer())),
 	)

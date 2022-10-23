@@ -11,16 +11,17 @@ valid_basic_auth {
 	value := trim_prefix(input.authorization, "Basic ")
 	decoded := base64.decode(value)
 
-	print(decoded)
-
 	colon := indexof(decoded, ":")
 	username := substring(decoded, 0, colon)
 	password := substring(decoded, colon + 1, -1)
 
-	print(username)
-	print(password)
-
-	credentials[username] == password
+	bcrypt_eq(credentials[username].hash, password)
 }
 
-credentials := {"bob": "secretvalue"}
+# generally don't store the plain value, it is only included here
+# for demontration and ease of testing.
+# this value would normally be loaded from a secret.
+credentials := {"bob": {
+	"hash": "$2y$10$/7tG7c7RQKnLki5OveBiyejtOvdR5.I3wtoAUHBUO5azpg00bbUvy",
+	"plain": "secretvalue",
+}}

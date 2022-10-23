@@ -2,8 +2,11 @@ package auth
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -147,6 +150,28 @@ func TestOPAAuthorizer(t *testing.T) {
 			},
 			expected: true,
 		},
+		{
+			name: "can apply HMAC auth policy",
+			cfg: OPAConfig{
+				Debug: true,
+				Query: "data.api.authz.hmac.allow",
+			},
+			policy: "testdata/hmac_auth.rego",
+			input: Input{
+				Method:        http.MethodPost,
+				Path:          "/api/private",
+				RawBody:       `{"message": "hello world"}`,
+				Authorization: generateHMAC("secretvalue", `ts=2022-01-01T00:00:00Z,path=/api/private,method=POST,body={"message": "hello world"}`),
+				Headers: http.Header{
+					"X-Auth-Timestamp": []string{"2022-01-01T00:00:00Z"},
+				},
+				// we load the key from a secret named "secretKey"
+				Data: map[string]string{
+					"secretKey": "secretvalue",
+				},
+			},
+			expected: true,
+		},
 	}
 
 	for _, tc := range cases {
@@ -161,4 +186,14 @@ func TestOPAAuthorizer(t *testing.T) {
 			require.Equal(t, tc.expected, result)
 		})
 	}
+}
+
+func generateHMAC(key, data string) string {
+	h := hmac.New(sha256.New, []byte(key))
+	h.Write([]byte(data))
+	digest := string(h.Sum(nil))
+	out := fmt.Sprintf("%x", digest)
+	fmt.Printf("data: %s\nhmac: %s\n---\n", data, out)
+
+	return out
 }

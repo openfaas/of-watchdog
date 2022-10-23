@@ -34,6 +34,7 @@ type InputConfig struct {
 	// authorizer rejects the request.
 	ErrorContentType string
 	AdditionalData   map[string]string
+	SkipPaths        map[string]struct{}
 }
 
 type Input struct {
@@ -56,6 +57,14 @@ func InputConfigFromEnv() (cfg InputConfig, err error) {
 	cfg.IncludeRawBody = truthy("OPA_INCLUDE_RAW_BODY", "false")
 	cfg.IncludeHeaders = truthy("OPA_INCLUDE_HEADERS", "false")
 
+	cfg.SkipPaths = make(map[string]struct{})
+	paths := os.Getenv("OPA_SKIP_PATHS")
+	for _, path := range strings.Split(paths, ",") {
+		cfg.SkipPaths[path] = struct{}{}
+	}
+
+	//TODO: add SkipPattern and use a radix tree to support skip patterns? see go-chi and https://github.com/armon/go-radix
+
 	env := authEnviron()
 	cfg.AdditionalData, err = loadAdditionalData(env)
 
@@ -72,6 +81,11 @@ func New(impl Authorizer, cfg InputConfig) Middleware {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if _, ok := cfg.SkipPaths[r.URL.Path]; ok {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			input := Input{
 				Method:        r.Method,
 				Path:          r.URL.Path,
