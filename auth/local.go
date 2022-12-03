@@ -58,6 +58,15 @@ func OPAConfigFromEnv() (cfg OPAConfig) {
 	return cfg
 }
 
+// NewLocalAuthorizer creates a OPA Authorizer instance for the given Policy.
+//
+// This method also exposes custom functions for policies to use. Currently
+// it exposes:
+//   - bcrypt_eq
+//   - constant_compare
+//
+// Additionally, it modifies the logging so that it will use the default log writer
+// when the OPA_DEBUG environment variable is set to true.
 func NewLocalAuthorizer(policy Policy, cfg OPAConfig) (_ Authorizer, err error) {
 	auth := opa{
 		cfg: cfg,
@@ -67,6 +76,8 @@ func NewLocalAuthorizer(policy Policy, cfg OPAConfig) (_ Authorizer, err error) 
 		policy,
 		rego.Function2(
 			&rego.Function{
+				// expose bcrypt.CompareHashAndPassword to policies
+				// so that they can do do secure basic auth
 				Name: "bcrypt_eq",
 				Decl: types.NewFunction(types.Args(types.S, types.S), types.B),
 			},
@@ -87,6 +98,8 @@ func NewLocalAuthorizer(policy Policy, cfg OPAConfig) (_ Authorizer, err error) 
 		),
 		rego.Function2(
 			&rego.Function{
+				// expose subtle.constant_compare to policies
+				// so that they can do secure string comparisons
 				Name: "constant_compare",
 				Decl: types.NewFunction(types.Args(types.S, types.S), types.B),
 			},
@@ -116,17 +129,37 @@ type opa struct {
 	cfg   OPAConfig
 }
 
+// Allowed implements the Authorizer interface and validates the given input against
+// the configured OPA policy.
 func (a opa) Allowed(ctx context.Context, input Input) (_ bool, err error) {
 	result, err := a.query.Eval(ctx, rego.EvalInput(input))
 	if err != nil {
 		return false, fmt.Errorf("can not evaluate OPA query: %w", err)
 	}
 
+	// this block allows us to inspect the result
+	// it will also be useful if we want to support
+	// complex result sets. See the TODO below.
 	if a.cfg.Debug {
 		data, _ := json.Marshal(result)
 		log.Printf("OPA query result: %s", string(data))
+
+		if len(result) == 1 && len(result[0].Bindings) == 0 {
+			if exprs := result[0].Expressions; len(exprs) == 1 {
+				value := exprs[0].Value
+				log.Printf("OPA result value: %v\n OPA Result type: %T", value, value)
+			}
+		}
+
 	}
 
+	// this only allows policies that have a single boolean result
+	// policies that return complex objects will be treated as false
+	//
+	// TODO: allow policies to return complex objects which are then
+	//       integrated into the request as X_AUTH headers.
+	//       this will allow, for example, policies to pass information
+	//       parsed from token.
 	return result.Allowed(), nil
 }
 

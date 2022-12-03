@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/stretchr/testify/require"
 
 	_ "embed"
@@ -19,6 +20,8 @@ import (
 func TestOPAAuthorizer(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+
+	const jwtSecretKey = "secret"
 
 	cases := []struct {
 		name     string
@@ -172,6 +175,51 @@ func TestOPAAuthorizer(t *testing.T) {
 			},
 			expected: true,
 		},
+		{
+			name: "can apply custom JWT auth policy",
+			cfg: OPAConfig{
+				Debug: true,
+				Query: "data.api.jwt.allow",
+			},
+			policy: "testdata/jwt.rego",
+			input: Input{
+				Method:        http.MethodPost,
+				Path:          "/api/private",
+				RawBody:       `{"message": "hello world"}`,
+				Authorization: bearerJWT(jwtSecretKey, map[string]interface{}{"sub": "alice", "email": "alice@test.example.com"}),
+				Data: map[string]string{
+					"jwt_key": jwtSecretKey,
+					// allow tokens with gmail.com or test.example.com in the email field
+					"allowed_domains": `{**@gmail.com,**@test.example.com}`,
+					"email_field":     "email",
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "JWT policy rejects non-matching domains",
+			cfg: OPAConfig{
+				Debug: true,
+				Query: "data.api.jwt.allow",
+			},
+			policy: "testdata/jwt.rego",
+			input: Input{
+				Method:        http.MethodPost,
+				Path:          "/api/private",
+				RawBody:       `{"message": "hello world"}`,
+				Authorization: bearerJWT(jwtSecretKey, map[string]interface{}{"sub": "alice", "email": "alice@test.example.com"}),
+				Data: map[string]string{
+					"jwt_key": jwtSecretKey,
+					// allow tokens with gmail.com or test.example.com in the email field
+					"allowed_domains": `{**@gmail.com,**@company.example.com}`,
+					"email_field":     "email",
+				},
+			},
+			expected: false,
+		},
+		// OICD auth can be seen in the testdata/oidc.rego file
+		// but is not possible to include the unit tests because
+		// it requires a running OIDC server.
 	}
 
 	for _, tc := range cases {
@@ -196,4 +244,22 @@ func generateHMAC(key, data string) string {
 	fmt.Printf("data: %s\nhmac: %s\n---\n", data, out)
 
 	return out
+}
+
+func generateTestJWT(key string, claims map[string]interface{}) (string, error) {
+	claims["exp"] = time.Now().Add(time.Hour).Unix()
+	claims["iat"] = time.Now().Unix()
+	claims["nbf"] = time.Now().Unix()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims(claims))
+
+	return token.SignedString([]byte(key))
+}
+
+func bearerJWT(key string, claim map[string]interface{}) string {
+	token, err := generateTestJWT(key, claim)
+	if err != nil {
+		panic(err)
+	}
+
+	return "Bearer " + token
 }

@@ -1,7 +1,5 @@
 package api.oidc
 
-import future.keywords.in
-
 # note that cache is per replica and will be lost when scaled down
 metadata_discovery(issuer_url) = http.send({
 	"url": concat("", [issuer_url, "/.well-known/openid-configuration"]),
@@ -18,7 +16,7 @@ jwks_request(url) = http.send({
 	"force_cache_duration_seconds": 3600, # Cache response for an hour
 })
 
-default response = false
+default allow = false
 
 # Below we extract various data from the input
 
@@ -31,15 +29,21 @@ default response = false
 #     "https://url3": false
 # }
 # the function is then configured with OPA_INPUT_SECRETS=oidc_issuers
+#
+# this could also be passed as a csv string of urls
+#   OPA_INPUT_OIDC_ISSUERS=https://url1,https://url2,https://url3
+# and then using
+#   issuers := split(input.data.oidc_issuers, ",")
+# to get the list of issuers
 issuers := json.unmarshal(input.data.oidc_issuers)
 
 # the next two are simpler and loaded directly from env vars
 # assume you have set OPA_INPUT_ALLOWED_DOMAINS='{*@company_name.com,*@company_name2.com}'
 # should be a valid glob https://www.openpolicyagent.org/docs/latest/policy-reference/#glob
-allowed_domains := split(input.allowed_domains, ",")
+allowed_domains := input.data.allowed_domains
 
 # assume you have set OPA_INPUT_EMAIL_FIELD='email'
-email_field := input.email_field
+email_field := input.data.email_field
 
 # Api/user auth via oauth
 # Verifies the provided JWT against a list of known providers.
@@ -47,14 +51,20 @@ email_field := input.email_field
 # for an issuer are checked against the available fields in the
 # token. If more than one configuration matches, one is chosen
 # arbitrarily.
-response := res {
+allow {
 	print("attempt client-credentials auth")
-	token := trim_prefix(input.auth_header, "Bearer ")
+	token := trim_prefix(input.authorization, "Bearer ")
+
+	# note that the token is _NOT_ verified yet, but we need
+	# to extract the issuer to perform the JWKS request and
+	# then verify the token.
+	# you should have a strict allow list of issuers otherwise
+	# this is insecure.
 	claims := io.jwt.decode(token)[1]
 
 	print("Look up issuer in issuers list")
 
-	# check is issuers is in the dict/object and is not false
+	# check is issuers is in the allow list dictionary and it is not false
 	issuers[claims.iss]
 
 	print("fetch metadata")

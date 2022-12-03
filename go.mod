@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/docker/go-units v0.5.0
+	github.com/golang-jwt/jwt/v4 v4.4.3
 	github.com/open-policy-agent/opa v0.45.0
 	github.com/openfaas/faas-middleware v1.2.2
 	github.com/prometheus/client_golang v1.13.0
