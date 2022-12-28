@@ -75,7 +75,7 @@ func main() {
 	baseFunctionHandler := buildRequestHandler(watchdogConfig, watchdogConfig.PrefixLogs)
 	requestHandler := baseFunctionHandler
 	// add middlewares here
-	policyPath := os.Getenv("OPA_POLICY")
+	policyPath := os.Getenv(auth.OPAPolicyEnv)
 	if policyPath != "" {
 		log.Printf("loading OPA policy(s): %q", policyPath)
 		// TODO: support remote authorizer if it starts with http:// or https://

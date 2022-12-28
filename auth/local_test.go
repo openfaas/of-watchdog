@@ -24,11 +24,12 @@ func TestOPAAuthorizer(t *testing.T) {
 	const jwtSecretKey = "secret"
 
 	cases := []struct {
-		name     string
-		cfg      OPAConfig
-		policy   string
-		input    Input
-		expected bool
+		name    string
+		cfg     OPAConfig
+		policy  string
+		input   Input
+		allow   bool
+		headers map[string]string
 	}{
 		{
 			name: "correctly loads and permits request when the default is true",
@@ -41,7 +42,7 @@ func TestOPAAuthorizer(t *testing.T) {
 				Method: http.MethodGet,
 				Path:   "/api/endpoint",
 			},
-			expected: true,
+			allow: true,
 		},
 		{
 			name: "allow GET request on the public path",
@@ -54,7 +55,7 @@ func TestOPAAuthorizer(t *testing.T) {
 				Method: http.MethodGet,
 				Path:   "/api/public",
 			},
-			expected: true,
+			allow: true,
 		},
 		{
 			name: "block unauthenticated POST request on the public path",
@@ -67,7 +68,7 @@ func TestOPAAuthorizer(t *testing.T) {
 				Method: http.MethodPost,
 				Path:   "/api/public",
 			},
-			expected: false,
+			allow: false,
 		},
 		{
 			name: "allow POST request on the public path authenticated as admin",
@@ -81,7 +82,7 @@ func TestOPAAuthorizer(t *testing.T) {
 				Path:          "/api/public",
 				Authorization: "admin",
 			},
-			expected: true,
+			allow: true,
 		},
 		{
 			name: "policy can inspect the rawBody value correctly and returns true",
@@ -95,7 +96,7 @@ func TestOPAAuthorizer(t *testing.T) {
 				Path:    "/api/public",
 				RawBody: "permitted",
 			},
-			expected: true,
+			allow: true,
 		},
 		{
 			name: "policy can inspect the json body value correctly and returns true",
@@ -109,7 +110,7 @@ func TestOPAAuthorizer(t *testing.T) {
 				Path:   "/api/public",
 				Body:   json.RawMessage(`{"override": "permitted"}`),
 			},
-			expected: true,
+			allow: true,
 		},
 		{
 			name: "policy can implement basic auth",
@@ -123,7 +124,7 @@ func TestOPAAuthorizer(t *testing.T) {
 				Path:          "/api/private",
 				Authorization: "Basic " + base64.StdEncoding.EncodeToString([]byte("bob:secretvalue")),
 			},
-			expected: true,
+			allow: true,
 		},
 		{
 			name: "can load and merge multiple policies, can evaluate basic auth",
@@ -137,7 +138,7 @@ func TestOPAAuthorizer(t *testing.T) {
 				Path:          "/api/private",
 				Authorization: "Basic " + base64.StdEncoding.EncodeToString([]byte("bob:secretvalue")),
 			},
-			expected: true,
+			allow: true,
 		},
 		{
 			name: "can load and merge multiple policies, can evaluate token auth",
@@ -151,7 +152,7 @@ func TestOPAAuthorizer(t *testing.T) {
 				Path:          "/api/private",
 				Authorization: "admin",
 			},
-			expected: true,
+			allow: true,
 		},
 		{
 			name: "can apply HMAC auth policy",
@@ -173,7 +174,7 @@ func TestOPAAuthorizer(t *testing.T) {
 					"secretKey": "secretvalue",
 				},
 			},
-			expected: true,
+			allow: true,
 		},
 		{
 			name: "can apply custom JWT auth policy",
@@ -194,7 +195,10 @@ func TestOPAAuthorizer(t *testing.T) {
 					"email_field":     "email",
 				},
 			},
-			expected: true,
+			allow: true,
+			headers: map[string]string{
+				"X-User-Email": "alice@test.example.com",
+			},
 		},
 		{
 			name: "JWT policy rejects non-matching domains",
@@ -215,7 +219,7 @@ func TestOPAAuthorizer(t *testing.T) {
 					"email_field":     "email",
 				},
 			},
-			expected: false,
+			allow: false,
 		},
 		// OICD auth can be seen in the testdata/oidc.rego file
 		// but is not possible to include the unit tests because
@@ -231,7 +235,13 @@ func TestOPAAuthorizer(t *testing.T) {
 
 			result, err := opa.Allowed(ctx, tc.input)
 			require.NoError(t, err)
-			require.Equal(t, tc.expected, result)
+			require.Equal(t, tc.allow, result.Allow)
+			require.Len(t, result.Headers, len(tc.headers))
+			if tc.headers != nil {
+				for k, v := range tc.headers {
+					require.Equal(t, v, result.Headers[k])
+				}
+			}
 		})
 	}
 }

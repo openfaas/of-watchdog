@@ -138,7 +138,18 @@ This allows writing authentication and authorization policies in Rego and applyi
 
 The auth policy can be loaded from a secret _or_ can be built directly into your function.
 
-If you have created an auth policy as a secret, then you simply need to add the secret to your `secrets` and then set the `OPA_POLICY` environment variable to the secret name during deployment. You must also set the `OPA_QUERY` environment variable.
+### Loading auth policy from a secret
+If you have created an auth policy as a secret, then you simply need to add the secret to your `secrets` and then set the `opa_policy` environment variable to the secret name during deployment. You must also set the `opa_query` environment variable.
+
+For example, if you have a policy called `basic_auth_policy` then you would
+
+1. create a secret named `basic_auth_policy`
+2. assign / require this secret in your function spec
+3. and set the following environment variable:
+
+	```env
+	opa_policy=basic_auth_policy
+	```
 
 ### Example basic auth
 
@@ -170,8 +181,8 @@ credentials := {"bob": "secretvalue"}
 Then your function would need the environment variables
 
 ```env
-OPA_POLICY=basic_auth_policy
-OPA_QUERY=data.api.auth.basic
+opa_policy=basic_auth_policy
+opa_query=data.api.auth.basic
 ```
 
 Note: the OPA query will always be `data.<package name>`
@@ -188,13 +199,32 @@ The policy input will receive the following input data:
 | `input.headers`       | the full request headers, note this is a map from string to a list of string, ie `map[string][]string` |
 | `input.rawBody`       | the request body as a string                                                                           |
 | `input.body`          | the JSON parsed request body                                                                           |
-| `input.data`          | additional input data as configured via the `OPA_INPUT_*` environnement variables                      |
+| `input.data`          | additional input data as configured via the `opa_input_*` environnement variables                      |
 
-The `headers`, `rawBody`, and `body` are not included by default. Each is controlled the value of the `OPA_INCLUDE_HEADERS`, `OPA_INCLUDE_RAW_BODY`, and `OPA_INCLUDE_BODY` environment variables respectively.
+The `headers`, `rawBody`, and `body` are not included by default. Each is controlled the value of the `opa_include_headers`, `opa_include_raw_body`, and `opa_include_body` environment variables respectively.
 
-The `data` field contains additional data from the environment variables that have the prefix `OPA_INPUT`. For example, `OPA_INPUT_VALID_ISSUERS=http://google.com` will then be available to the policy as `input.data.valid_issuers`.
+The `data` field contains additional data from the environment variables that have the prefix `opa_input`. For example, `opa_input_valid_issuers=http://google.com` will then be available to the policy as `input.data.valid_issuers`.
 
-Secret values can also be loaded into the `data` field, this is controlled via the `OPA_INPUT_SECRETS`. This can be a comma separated list of secrets to be loaded. For example, if you have a secret name `slack_hash_key` and you set `OPA_INPUT_SECRETS=slack_hash_key`, you can access the value from `input.data.slack_hash_key`
+Secret values can also be loaded into the `data` field, this is controlled via the `opa_input_secrets`. This can be a comma separated list of secrets to be loaded. For example, if you have a secret name `slack_hash_key` and you set `opa_input_secrets=slack_hash_key`, you can access the value from `input.data.slack_hash_key`
+
+### Policy output
+The middleware supports two types of policy output: simple and structured.
+
+#### Simple boolean output
+The simplest form of policy output is a boolean value. If the policy returns `true` then the request will be allowed to proceed, if the policy returns `false` then the request will be rejected with a `401` status code.
+
+Examples can be found in the [basic auth policy](/auth/testdata/basic_auth.rego) and the [HMAC policy](/auth/testdata/hmac_auth.rego)
+
+#### Structured response output
+The policy can also return a structured response. This allows the policy to return additional context to the handler by specifying additional headers to add to the request. The response must be a JSON object with the following fields:
+
+| Key         | Description                                                                 |
+| ----------- | --------------------------------------------------------------------------- |
+| `allow`     | a boolean value indicating if the request should be allowed or not          |
+| `status`    | (optional) the status code to return if the request is **rejected**. Defaults to `401` |
+| `headers`   | (optional) a map of headers to be added to the request before it is sent to your implementation. It is only used if the request **is allowed**.  |
+
+The primary use case would be extracting client or user information from the request and then adding it to the request headers (for example, as `X-User-Email`) so that your implementation can use this information to perform additional actions or enable auditing.
 
 ## Metrics
 
@@ -230,6 +260,16 @@ Environmental variables:
 | `buffer_http`                   | deprecated alias for `http_buffer_req_body`, will be removed in future version                                                                                                                                                                                                                               |
 | `static_path`                   | Absolute or relative path to the directory that will be served if `mode="static"`                                                                                                                                                                                                                            |
 | `ready_path`                    | When non-empty, requests to `/_/ready` will invoke the function handler with this path. This can be used to provide custom readiness logic. When `max_inflight` is set, the concurrency limit is checked first before proxying the request to the function.                                                  |
+| `opa_policy` | The name of the secret containing the OPA policy to be used. Alternatively, can be a path to a file, e.g. a `tar.gz`, `.rego`, or `wasm` file bundled with the function at build time. |
+| `opa_query` | The dot separated query used to evaluate the policy. |
+| `opa_debug` | When set to `true`, the OPA policy will be evaluated in debug mode, the output is sent to the function stdout. Additional metadata is also printed by the auth middleware. |
+| `opa_skip_paths` | comma separated list of paths to skip policy evaluation, these paths will allow _all_ requests. |
+| `opa_include_headers` | boolean value to indicate whether to include the request headers in the OPA input. See also [Policy Input](#policy-input). Default: `false` |
+| `opa_include_body` | boolean value to indicate whether to include the request body in the OPA input, the body is will be parsed JSON. See also [Policy Input](#policy-input). Default: `false` |
+| `opa_include_raw_body` | boolean value to indicate whether to include the raw request body in the OPA input. See also [Policy Input](#policy-input). Default: `false` |
+| `opa_input_secrets` | comma separated list of secrets to include in the OPA input. The values are accessible using `input.data[secret_name]` or `input.data.secret_name`, see also [Policy Input](#policy-input). |
+| `opa_input_*` | any other environment variable starting with `opa_input_` will be included in the OPA input. The values are accessible using `input.data[env_var_name]` or `input.data.env_var_name`, see also [Policy Input](#policy-input). |
+| `opa_error_content_type` | The content type to set when the policy evaluation fails. Default: `text/plain` |
 
 Unsupported options from the [Classic Watchdog](https://github.com/openfaas/classic-watchdog):
 

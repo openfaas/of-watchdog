@@ -4,7 +4,7 @@
 # flows.
 package api.jwt
 
-default allow = false
+default allow = {"allow": false}
 
 # Below we extract various data from the input
 
@@ -30,7 +30,7 @@ now = value {
 # for an issuer are checked against the available fields in the
 # token. If more than one configuration matches, one is chosen
 # arbitrarily.
-allow {
+allow = response {
 	print("attempt bearer token auth")
 	token := trim_prefix(input.authorization, "Bearer ")
 
@@ -67,4 +67,9 @@ allow {
 	# and it must match the allowed domains glob
 	# see https://www.openpolicyagent.org/docs/latest/policy-reference/#glob
 	glob.match(allowed_domains, null, email)
+
+	response := {
+		"allow": true,
+		"headers": {"X-User-Email": email},
+	}
 }

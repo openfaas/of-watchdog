@@ -53,8 +53,8 @@ type OPAConfig struct {
 }
 
 func OPAConfigFromEnv() (cfg OPAConfig) {
-	cfg.Debug = truthy("OPA_DEBUG", "false")
-	cfg.Query = os.Getenv("OPA_QUERY")
+	cfg.Debug = truthy(OPADebugEnv, "false")
+	cfg.Query = os.Getenv(OPAQueryEnv)
 	return cfg
 }
 
@@ -66,7 +66,7 @@ func OPAConfigFromEnv() (cfg OPAConfig) {
 //   - constant_compare
 //
 // Additionally, it modifies the logging so that it will use the default log writer
-// when the OPA_DEBUG environment variable is set to true.
+// when the opa_debug environment variable is set to true.
 func NewLocalAuthorizer(policy Policy, cfg OPAConfig) (_ Authorizer, err error) {
 	auth := opa{
 		cfg: cfg,
@@ -131,36 +131,38 @@ type opa struct {
 
 // Allowed implements the Authorizer interface and validates the given input against
 // the configured OPA policy.
-func (a opa) Allowed(ctx context.Context, input Input) (_ bool, err error) {
+func (a opa) Allowed(ctx context.Context, input Input) (_ AuthResult, err error) {
+	resp := AuthResult{}
+
 	result, err := a.query.Eval(ctx, rego.EvalInput(input))
 	if err != nil {
-		return false, fmt.Errorf("can not evaluate OPA query: %w", err)
+		return resp, fmt.Errorf("can not evaluate OPA query: %w", err)
 	}
 
-	// this block allows us to inspect the result
-	// it will also be useful if we want to support
-	// complex result sets. See the TODO below.
 	if a.cfg.Debug {
 		data, _ := json.Marshal(result)
 		log.Printf("OPA query result: %s", string(data))
-
-		if len(result) == 1 && len(result[0].Bindings) == 0 {
-			if exprs := result[0].Expressions; len(exprs) == 1 {
-				value := exprs[0].Value
-				log.Printf("OPA result value: %v\n OPA Result type: %T", value, value)
-			}
-		}
-
 	}
 
-	// this only allows policies that have a single boolean result
-	// policies that return complex objects will be treated as false
-	//
-	// TODO: allow policies to return complex objects which are then
-	//       integrated into the request as X_AUTH headers.
-	//       this will allow, for example, policies to pass information
-	//       parsed from token.
-	return result.Allowed(), nil
+	allowed, ok := checkSimpleResponse(result)
+	// this is a simple response that only has a single boolean result
+	if ok {
+		resp.Allow = allowed
+		return resp, nil
+	}
+
+	// Parse the structured result set
+	expr := findExpression(result, a.cfg.Query)
+	if expr == nil {
+		return resp, fmt.Errorf("can not find query in policy result: %q", a.cfg.Query)
+	}
+
+	resp, err = parseExpression(expr)
+	if a.cfg.Debug {
+		log.Printf("OPA query result: %+v", resp)
+	}
+
+	return resp, err
 }
 
 // truthy converts the given env variable to a boolean.
@@ -174,4 +176,39 @@ func truthy(name string, fallback string) bool {
 		return true
 	}
 	return false
+}
+
+// checkSimpleResponse is a duplicate of the ResultSet.Allowed() method, but
+// it also returns a second boolean indicating if the result is a simple boolean
+// or a more complex expressions.
+func checkSimpleResponse(rs rego.ResultSet) (bool, bool) {
+	if len(rs) == 1 && len(rs[0].Bindings) == 0 {
+		if exprs := rs[0].Expressions; len(exprs) == 1 {
+			if b, ok := exprs[0].Value.(bool); ok {
+				return b, true
+			}
+		}
+	}
+	return false, false
+}
+
+func findExpression(result rego.ResultSet, query string) *rego.ExpressionValue {
+	for _, r := range result {
+		for _, e := range r.Expressions {
+			if e.Text == query {
+				return e
+			}
+		}
+	}
+	return nil
+}
+
+func parseExpression(exp *rego.ExpressionValue) (AuthResult, error) {
+	var result AuthResult
+	data, err := json.Marshal(exp.Value)
+	if err != nil {
+		return result, err
+	}
+	err = json.Unmarshal(data, &result)
+	return result, err
 }

@@ -15,9 +15,19 @@ import (
 
 const secretDir = "/var/openfaas/secrets"
 
+// AuthResult is the parsed response from the OPA policy.
+type AuthResult struct {
+	// Allow indicates if the request is allowed.
+	Allow  bool `json:"allow"`
+	Status int  `json:"status,omitempty"`
+	// Headers are added to the request and passed to the handler, when the request is allowed.
+	// If the request is not allowed, the headers are ignored.
+	Headers map[string]string `json:"headers,omitempty"`
+}
+
 // Authorizer is the generic request authorizer interface.
 type Authorizer interface {
-	Allowed(context.Context, Input) (bool, error)
+	Allowed(context.Context, Input) (AuthResult, error)
 }
 
 type InputConfig struct {
@@ -48,17 +58,17 @@ type Input struct {
 }
 
 func InputConfigFromEnv() (cfg InputConfig, err error) {
-	cfg.ErrorContentType = os.Getenv("OPA_CONTENT_TYPE")
+	cfg.ErrorContentType = os.Getenv(OPAErrorContentTypeEnv)
 	if cfg.ErrorContentType == "" {
 		cfg.ErrorContentType = "text/plain"
 	}
 
-	cfg.IncludeJSONBody = truthy("OPA_INCLUDE_BODY", "false")
-	cfg.IncludeRawBody = truthy("OPA_INCLUDE_RAW_BODY", "false")
-	cfg.IncludeHeaders = truthy("OPA_INCLUDE_HEADERS", "false")
+	cfg.IncludeJSONBody = truthy(OPAIncludeBodyEnv, "false")
+	cfg.IncludeRawBody = truthy(OPAIncludeRawBodyEnv, "false")
+	cfg.IncludeHeaders = truthy(OPAIncludeHeadersEnv, "false")
 
 	cfg.SkipPaths = make(map[string]struct{})
-	paths := os.Getenv("OPA_SKIP_PATHS")
+	paths := os.Getenv(OPASkipPathsEnv)
 	for _, path := range strings.Split(paths, ",") {
 		cfg.SkipPaths[path] = struct{}{}
 	}
@@ -115,18 +125,26 @@ func New(impl Authorizer, cfg InputConfig) Middleware {
 				input.Body = json.RawMessage(body)
 			}
 
-			allowed, err := impl.Allowed(r.Context(), input)
+			result, err := impl.Allowed(r.Context(), input)
 			if err != nil {
 				errorWriter(w, "can not process authentication", http.StatusInternalServerError)
 				return
 			}
 
-			if allowed {
+			if result.Allow {
+				for k, v := range result.Headers {
+					r.Header.Set(k, v)
+				}
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			errorWriter(w, "unauthorized", http.StatusUnauthorized)
+			status := http.StatusUnauthorized
+			if result.Status != 0 {
+				status = result.Status
+			}
+
+			errorWriter(w, "unauthorized", status)
 			return
 		})
 	}
@@ -169,17 +187,17 @@ func NewAuthorizer(path string) (Authorizer, error) {
 func loadAdditionalData(options map[string]string) (map[string]string, error) {
 	out := map[string]string{}
 	for name, value := range options {
-		if !strings.HasPrefix(name, "OPA_INPUT") {
+		if !strings.HasPrefix(name, OPAInputPrefixEnv) {
 			continue
 		}
-		if name == "OPA_INPUT_SECRETS" {
+		if name == OPAInputSecretsEnv {
 			continue
 		}
 
-		out[strings.TrimPrefix(name, "OPA_INPUT")] = value
+		out[strings.TrimPrefix(name, OPAInputPrefixEnv)] = value
 	}
 
-	names := options["OPA_INPUT_SECRETS"]
+	names := options[OPAInputSecretsEnv]
 	if names == "" {
 		return out, nil
 	}
@@ -200,7 +218,7 @@ func loadAdditionalData(options map[string]string) (map[string]string, error) {
 func authEnviron() map[string]string {
 	out := map[string]string{}
 	for _, env := range os.Environ() {
-		if strings.HasPrefix(env, "OPA_INPUT") {
+		if strings.HasPrefix(env, OPAInputPrefixEnv) {
 			name, value, ok := cut(env, "=")
 			if !ok {
 				continue
