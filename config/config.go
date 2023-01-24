@@ -67,6 +67,7 @@ func (w WatchdogConfig) Process() (string, []string) {
 
 // New create config based upon environmental variables.
 func New(env []string) (WatchdogConfig, error) {
+	defaultTimeout := time.Second * 30
 
 	envMap := mapEnv(env)
 
@@ -112,7 +113,7 @@ func New(env []string) (WatchdogConfig, error) {
 		staticPath = val
 	}
 
-	writeTimeout := getDuration(envMap, "write_timeout", time.Second*10)
+	writeTimeout := getDuration(envMap, "write_timeout", defaultTimeout)
 	healthcheckInterval := writeTimeout
 	if val, exists := envMap["healthcheck_interval"]; exists {
 		healthcheckInterval = parseIntOrDurationValue(val, writeTimeout)
@@ -127,13 +128,13 @@ func New(env []string) (WatchdogConfig, error) {
 
 	c := WatchdogConfig{
 		TCPPort:             getInt(envMap, "port", 8080),
-		HTTPReadTimeout:     getDuration(envMap, "read_timeout", time.Second*10),
+		HTTPReadTimeout:     getDuration(envMap, "read_timeout", defaultTimeout),
 		HTTPWriteTimeout:    writeTimeout,
 		HealthcheckInterval: healthcheckInterval,
 		FunctionProcess:     functionProcess,
 		StaticPath:          staticPath,
 		InjectCGIHeaders:    true,
-		ExecTimeout:         getDuration(envMap, "exec_timeout", time.Second*10),
+		ExecTimeout:         getDuration(envMap, "exec_timeout", defaultTimeout),
 		OperationalMode:     ModeStreaming,
 		ContentType:         contentType,
 		SuppressLock:        getBool(envMap, "suppress_lock"),
