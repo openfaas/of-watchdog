@@ -7,20 +7,18 @@ on:
 
 jobs:
   publish:
-    strategy:
-      matrix:
-        go-version: [ 1.18.x ]
-        os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os }}
     permissions:
-      actions: read
       checks: write
       contents: write
+      actions: read
       issues: read
       packages: write
       pull-requests: read
       repository-projects: read
       statuses: read
+
+    runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@master
         with:
@@ -28,51 +26,44 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: 1.19.x
       - name: Make all
         run: make all
 
       - name: Get TAG
         id: get_tag
-        run: echo ::set-output name=TAG::${GITHUB_REF#refs/tags/}
+        run: echo TAG=${GITHUB_REF#refs/tags/} >> $GITHUB_ENV
+
       - name: Get Repo Owner
         id: get_repo_owner
-        run: >
-          echo ::set-output name=repo_owner::$(echo ${{ github.repository_owner }} |
-          tr '[:upper:]' '[:lower:]')
-      - name: Get Repo Name
-        id: get_repo_name
-        run: >
-          echo ::set-output name=repo_name::$(echo ${{ github.repository }} |
-          tr '[:upper:]' '[:lower:]' |
-          awk  -F'/' '{print $2}')
+        run: echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" > $GITHUB_ENV
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2
 
       - name: Login to Docker Registry
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
 
       - name: Docker Build and Push
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           context: ./
           file: ./Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           tags: |
-            ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/${{ steps.get_repo_name.outputs.repo_name }}:${{ github.sha }}
-            ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/${{ steps.get_repo_name.outputs.repo_name }}:${{ steps.get_tag.outputs.TAG }}
-            ghcr.io/${{ steps.get_repo_owner.outputs.repo_owner }}/${{ steps.get_repo_name.outputs.repo_name }}:latest
+            ghcr.io/${{ env.REPO_OWNER }}/of-watchdog:${{ github.sha }}
+            ghcr.io/${{ env.REPO_OWNER }}/of-watchdog:${{ steps.get_tag.outputs.TAG }}
+            ghcr.io/${{ env.REPO_OWNER }}/of-watchdog:latest
 
       - name: Upload release binaries
-        uses: alexellis/upload-assets@0.2.2
+        uses: alexellis/upload-assets@0.4.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
