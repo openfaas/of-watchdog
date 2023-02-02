@@ -23,6 +23,7 @@ import (
 	units "github.com/docker/go-units"
 
 	limiter "github.com/openfaas/faas-middleware/concurrency-limiter"
+	"github.com/openfaas/of-watchdog/auth"
 	"github.com/openfaas/of-watchdog/config"
 	"github.com/openfaas/of-watchdog/executor"
 	"github.com/openfaas/of-watchdog/metrics"
@@ -73,6 +74,26 @@ func main() {
 	// of the request mode.
 	baseFunctionHandler := buildRequestHandler(watchdogConfig, watchdogConfig.PrefixLogs)
 	requestHandler := baseFunctionHandler
+	// add middlewares here
+	policyPath := os.Getenv(auth.OPAPolicyEnv)
+	if policyPath != "" {
+		log.Printf("loading OPA policy(s): %q", policyPath)
+		// TODO: support remote authorizer if it starts with http:// or https://
+		authorizer, err := auth.NewAuthorizer(policyPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s", err.Error())
+			os.Exit(1)
+		}
+
+		inputCfg, err := auth.InputConfigFromEnv()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s", err.Error())
+			os.Exit(1)
+		}
+
+		authMiddleware := auth.New(authorizer, inputCfg)
+		requestHandler = authMiddleware(requestHandler)
+	}
 
 	var limit limiter.Limiter
 	if watchdogConfig.MaxInflight > 0 {
