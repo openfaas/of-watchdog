@@ -2,13 +2,24 @@
 
 Reverse proxy for HTTP microservices and STDIO
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/openfaas/of-watchdog)](https://goreportcard.com/report/github.com/openfaas/of-watchdog) [![Build Status](https://travis-ci.org/openfaas/of-watchdog.svg?branch=master)](https://travis-ci.org/openfaas/of-watchdog)
+[![Go Report Card](https://goreportcard.com/badge/github.com/openfaas/of-watchdog)](https://goreportcard.com/report/github.com/openfaas/of-watchdog) [![build](https://github.com/openfaas/of-watchdog/actions/workflows/build.yaml/badge.svg)](https://github.com/openfaas/of-watchdog/actions/workflows/build.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![OpenFaaS](https://img.shields.io/badge/openfaas-serverless-blue.svg)](https://www.openfaas.com)
 
 The `of-watchdog` implements an HTTP server listening on port 8080, and acts as a reverse proxy for running functions and microservices. It can be used independently, or as the entrypoint for a container with OpenFaaS.
 
 This version of the OpenFaaS watchdog adds support for HTTP proxying as well as STDIO, which enables reuse of memory and very fast serving of requests. It does not aim to replace the [Classic Watchdog](https://github.com/openfaas/classic-watchdog), but offers another option for those who need these features.
+
+A download is made via GitHub releases, but the watchdog is meant to be copied from the container image published to [ghcr.io](https://github.com/openfaas/of-watchdog/pkgs/container/of-watchdog) in a multi-stage build:
+
+```bash
+FROM --platform=${TARGETPLATFORM:-linux/amd64} ghcr.io/openfaas/of-watchdog:0.9.11 as watchdog
+FROM --platform=${TARGETPLATFORM:-linux/amd64} node:18-alpine as ship
+
+COPY --from=watchdog /fwatchdog /usr/bin/fwatchdog
+```
+
+[See example templates](https://github.com/openfaas/templates/)
 
 ### Goals
 
@@ -20,7 +31,7 @@ This version of the OpenFaaS watchdog adds support for HTTP proxying as well as 
 
 There are several modes available for the of-watchdog which changes how it interacts with your microservice or function code.
 
-![](https://docs.openfaas.com/architecture/watchdog-modes.png)
+![Modes for of-watchdog](https://docs.openfaas.com/architecture/watchdog-modes.png)
 
 > A comparison of three watchdog modes. Top left - Classic Watchdog, top right: afterburn (deprecated), bottom left HTTP mode from of-watchdog.
 
