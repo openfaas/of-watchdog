@@ -233,8 +233,9 @@ func createLockFile() (string, error) {
 
 func makeSerializingForkRequestHandler(watchdogConfig config.WatchdogConfig, logPrefix bool) func(http.ResponseWriter, *http.Request) {
 	functionInvoker := executor.SerializingForkFunctionRunner{
-		ExecTimeout: watchdogConfig.ExecTimeout,
-		LogPrefix:   logPrefix,
+		ExecTimeout:   watchdogConfig.ExecTimeout,
+		LogPrefix:     logPrefix,
+		LogBufferSize: watchdogConfig.LogBufferSize,
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {

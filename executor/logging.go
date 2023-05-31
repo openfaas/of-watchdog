@@ -10,7 +10,6 @@ import (
 )
 
 // bindLoggingPipe spawns a goroutine for passing through logging of the given output pipe.
-//
 func bindLoggingPipe(name string, pipe io.Reader, output io.Writer, logPrefix bool, maxBufferSize int) {
 	log.Printf("Started logging: %s from function.", name)
 
