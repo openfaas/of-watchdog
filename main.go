@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -217,14 +216,12 @@ func createLockFile() (string, error) {
 	path := filepath.Join(os.TempDir(), ".lock")
 	log.Printf("Writing lock-file to: %s\n", path)
 
-	mkdirErr := os.MkdirAll(os.TempDir(), os.ModePerm)
-	if mkdirErr != nil {
-		return path, mkdirErr
+	if err := os.MkdirAll(os.TempDir(), os.ModePerm); err != nil {
+		return path, err
 	}
 
-	writeErr := ioutil.WriteFile(path, []byte{}, 0660)
-	if writeErr != nil {
-		return path, writeErr
+	if err := os.WriteFile(path, []byte{}, 0660); err != nil {
+		return path, err
 	}
 
 	atomic.StoreInt32(&acceptingConnections, 1)

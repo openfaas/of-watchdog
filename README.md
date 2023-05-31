@@ -155,31 +155,32 @@ Environmental variables:
 
 > Note: timeouts should be specified as Golang durations i.e. `1m` or `20s`.
 
-| Option       |Usage|
-| ---------------------- |-----|
-| `fprocess` / `function_process`     |  Process to execute a server in `http` mode or to be executed for each request in the other modes. For non `http` mode the process must accept input via STDIN and print output via STDOUT. Also known as "function process".        |
-| `mode`       |  The mode which of-watchdog operates in, Default `streaming` [see doc](#3-streaming-fork-modestreaming---default). Options are [http](#1-http-modehttp), [serialising fork](#2-serializing-fork-modeserializing), [streaming fork](#3-streaming-fork-modestreaming---default), [static](#4-static-modestatic) |
-| `read_timeout`         |  HTTP timeout for reading the payload from the client caller (in seconds)          |
-| `write_timeout`        |  HTTP timeout for writing a response body from your function (in seconds)          |
-| `exec_timeout`         |  Exec timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0.        |
-| `max_inflight`         |  Limit the maximum number of requests in flight, and return a HTTP status 429 when exceeded           |
-| `prefix_logs`          |  When set to `true` the watchdog will add a prefix of "Date Time" + "stderr/stdout" to every line read from the function process. Default `true`             |
-| `log_buffer_size`      | The amount of bytes to read from stderr/stdout for log lines. When exceeded, the user will see an "bufio.Scanner: token too long" error. The default value is `bufio.MaxScanTokenSize` |
-| `healthcheck_interval` |  Interval (in seconds) for HTTP healthcheck by container orchestrator i.e. kubelet. Used for graceful shutdowns.          |
-| `port`       |  Specify an alternative TCP port for testing. Default: `8080`            |
-| `content_type`         |  Force a specific Content-Type response for all responses - only in forking/serializing modes.        |
-| `suppress_lock`        |  When set to `false` the watchdog will attempt to write a lockfile to `/tmp/.lock` for healthchecks. Default `false`   |
-| `http_upstream_url`    |  `http` mode only - where to forward requests i.e. `127.0.0.1:5000`      |
-| `upstream_url`         |  alias for `http_upstream_url`        |
-| `http_buffer_req_body` |  `http` mode only - buffers request body in memory before forwarding upstream to your template's `upstream_url`. Use if your upstream HTTP server does not accept `Transfer-Encoding: chunked`, for example WSGI tends to require this setting. Default: `false`                |
-| `buffer_http`          |  deprecated alias for `http_buffer_req_body`, will be removed in future version    |
-| `static_path`          |  Absolute or relative path to the directory that will be served if `mode="static"` |
-| `ready_path` | When non-empty, requests to `/_/ready` will invoke the function handler with this path. This can be used to provide custom readiness logic. When `max_inflight` is set, the concurrency limit is checked first before proxying the request to the function. |
+| Option                           | Usage|
+| -------------------------------- |---------------------------------------------------------------------|
+| `buffer_http`                    | (Deprecated) Alias for `http_buffer_req_body`, will be removed in future version    |
+| `content_type`                   |  Force a specific Content-Type response for all responses - only in forking/serializing modes.        |
+| `exec_timeout`                   |  Exec timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0.        |
+| `fprocess` / `function_process`  |  Process to execute a server in `http` mode or to be executed for each request in the other modes. For non `http` mode the process must accept input via STDIN and print output via STDOUT. Also known as "function process".        |
+| `healthcheck_interval`           |  Interval (in seconds) for HTTP healthcheck by container orchestrator i.e. kubelet. Used for graceful shutdowns.          |
+| `http_buffer_req_body`           |  `http` mode only - buffers request body in memory before forwarding upstream to your template's `upstream_url`. Use if your upstream HTTP server does not accept `Transfer-Encoding: chunked`, for example WSGI tends to require this setting. Default: `false`                |
+| `http_upstream_url`              |  `http` mode only - where to forward requests i.e. `http://127.0.0.1:5000`      |
+| `log_buffer_size`                | The amount of bytes to read from stderr/stdout for log lines. When exceeded, the user will see an "bufio.Scanner: token too long" error. The default value is `bufio.MaxScanTokenSize`           |
+| `max_inflight`                   |  Limit the maximum number of requests in flight, and return a HTTP status 429 when exceeded           |
+| `mode`                           |  The mode which of-watchdog operates in, Default `streaming` [see doc](#3-streaming-fork-modestreaming---default). Options are [http](#1-http-modehttp), [serialising fork](#2-serializing-fork-modeserializing), [streaming fork](#3-streaming-fork-modestreaming---default), [static](#4-static-modestatic) |
+| `port`                           |  Specify an alternative TCP port for testing. Default: `8080`            |
+| `prefix_logs`                    |  When set to `true` the watchdog will add a prefix of "Date Time" + "stderr/stdout" to every line read from the function process. Default `true`             |
+| `read_timeout`                   |  HTTP timeout for reading the payload from the client caller (in seconds)          |
+| `ready_path`                     | When non-empty, requests to `/_/ready` will invoke the function handler with this path. This can be used to provide custom readiness logic. When `max_inflight` is set, the concurrency limit is checked first before proxying the request to the function. |
+| `static_path`                    |  Absolute or relative path to the directory that will be served if `mode="static"` |
+| `suppress_lock`                  |  When set to `false` the watchdog will attempt to write a lockfile to `/tmp/.lock` for healthchecks. Default `false`   |
+| `upstream_url`                   |  Alias for `http_upstream_url`                                                          |
+| `write_timeout`                  |  HTTP timeout for writing a response body from your function (in seconds)          |
 
 Unsupported options from the [Classic Watchdog](https://github.com/openfaas/classic-watchdog):
 
-| Option        | Usage              |
-| ------------- | --------------------------------------------------------------------------------------------- |
-| `write_debug` | In the classic watchdog, this prints the response body out to the console |
-| `read_debug` | In the classic watchdog, this prints the request body out to the console |
-| `combined_output` | In the classic watchdog, this returns STDOUT and STDERR in the function's HTTP response, when off it only returns STDOUT and prints STDERR to the logs of the watchdog |
+| Option               | Usage                                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| `write_debug`        | In the classic watchdog, this prints the response body out to the console |
+| `read_debug`         | In the classic watchdog, this prints the request body out to the console |
+| `combined_output`    | In the classic watchdog, this returns STDOUT and STDERR in the function's HTTP response, when off it only returns STDOUT and prints STDERR to the logs of the watchdog |
+
