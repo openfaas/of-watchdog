@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	units "github.com/docker/go-units"
@@ -91,7 +90,7 @@ func serializeFunction(req FunctionRequest, f *SerializingForkFunctionRunner) (*
 		}
 
 		var err error
-		data, err = ioutil.ReadAll(reader)
+		data, err = io.ReadAll(reader)
 
 		if err != nil {
 			return nil, err
@@ -148,7 +147,7 @@ func pipeToProcess(stdin io.WriteCloser, stdout io.Reader, data *[]byte) (*[]byt
 
 	go func(c chan error) {
 		var err error
-		result, err := ioutil.ReadAll(stdout)
+		result, err := io.ReadAll(stdout)
 		functionResult = &result
 		if err != nil {
 			c <- err

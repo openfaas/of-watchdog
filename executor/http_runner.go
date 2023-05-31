@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	units "github.com/docker/go-units"
 
@@ -98,7 +97,7 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 
 	var body io.Reader
 	if f.BufferHTTPBody {
-		reqBody, _ := ioutil.ReadAll(r.Body)
+		reqBody, _ := io.ReadAll(r.Body)
 		body = bytes.NewReader(reqBody)
 	} else {
 		body = r.Body
@@ -166,7 +165,7 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	if res.Body != nil {
 		defer res.Body.Close()
 
-		bodyBytes, bodyErr := ioutil.ReadAll(res.Body)
+		bodyBytes, bodyErr := io.ReadAll(res.Body)
 		if bodyErr != nil {
 			log.Println("read body err", bodyErr)
 		}
