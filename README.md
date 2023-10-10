@@ -166,6 +166,7 @@ Environmental variables:
 | `http_upstream_url`              |  `http` mode only - where to forward requests i.e. `http://127.0.0.1:5000`      |
 | `log_buffer_size`                | The amount of bytes to read from stderr/stdout for log lines. When exceeded, the user will see an "bufio.Scanner: token too long" error. The default value is `bufio.MaxScanTokenSize`           |
 | `max_inflight`                   |  Limit the maximum number of requests in flight, and return a HTTP status 429 when exceeded           |
+| `metrics_port`                   |  Specify an alternative metrics port. Default: `8081`	|
 | `mode`                           |  The mode which of-watchdog operates in, Default `streaming` [see doc](#3-streaming-fork-modestreaming---default). Options are [http](#1-http-modehttp), [serialising fork](#2-serializing-fork-modeserializing), [streaming fork](#3-streaming-fork-modestreaming---default), [static](#4-static-modestatic) |
 | `port`                           |  Specify an alternative TCP port for testing. Default: `8080`            |
 | `prefix_logs`                    |  When set to `true` the watchdog will add a prefix of "Date Time" + "stderr/stdout" to every line read from the function process. Default `true`             |
@@ -183,4 +184,3 @@ Unsupported options from the [Classic Watchdog](https://github.com/openfaas/clas
 | `write_debug`        | In the classic watchdog, this prints the response body out to the console |
 | `read_debug`         | In the classic watchdog, this prints the request body out to the console |
 | `combined_output`    | In the classic watchdog, this returns STDOUT and STDERR in the function's HTTP response, when off it only returns STDOUT and prints STDERR to the logs of the watchdog |
-

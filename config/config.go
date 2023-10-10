@@ -140,7 +140,7 @@ func New(env []string) (WatchdogConfig, error) {
 		SuppressLock:        getBool(envMap, "suppress_lock"),
 		UpstreamURL:         upstreamURL,
 		BufferHTTPBody:      getBools(envMap, "buffer_http", "http_buffer_req_body"),
-		MetricsPort:         8081,
+		MetricsPort:         getInt(envMap, "metrics_port", 8081),
 		MaxInflight:         getInt(envMap, "max_inflight", 0),
 		PrefixLogs:          prefixLogs,
 		LogBufferSize:       logBufferSize,
