@@ -72,6 +72,7 @@ func (cl *ConcurrencyLimiter) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		// Some APIs only return JSON, since we can interfere here and send a plain/text
 		// message, let's do the right thing so that downstream users can consume it.
 		w.Header().Add("Content-Type", "text/plain")
+		w.Header().Add("X-OpenFaaS-Internal", "faas-middleware")
 
 		w.WriteHeader(http.StatusTooManyRequests)
 

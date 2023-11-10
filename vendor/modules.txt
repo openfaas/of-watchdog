@@ -12,40 +12,40 @@ github.com/davecgh/go-spew/spew
 github.com/docker/go-units
 # github.com/golang/protobuf v1.5.3
 ## explicit; go 1.9
-github.com/golang/protobuf/proto
 # github.com/matttproud/golang_protobuf_extensions v1.0.4
 ## explicit; go 1.9
-github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/openfaas/faas-middleware v1.2.2
-## explicit; go 1.18
+# github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0
+## explicit; go 1.19
+github.com/matttproud/golang_protobuf_extensions/v2/pbutil
+# github.com/openfaas/faas-middleware v1.2.3
+## explicit; go 1.20
 github.com/openfaas/faas-middleware/concurrency-limiter
-# github.com/prometheus/client_golang v1.15.1
-## explicit; go 1.17
+# github.com/prometheus/client_golang v1.17.0
+## explicit; go 1.19
 github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/internal
 github.com/prometheus/client_golang/prometheus/promauto
 github.com/prometheus/client_golang/prometheus/promhttp
 github.com/prometheus/client_golang/prometheus/testutil
 github.com/prometheus/client_golang/prometheus/testutil/promlint
-# github.com/prometheus/client_model v0.4.0
-## explicit; go 1.18
+# github.com/prometheus/client_model v0.5.0
+## explicit; go 1.19
 github.com/prometheus/client_model/go
-# github.com/prometheus/common v0.44.0
-## explicit; go 1.18
+# github.com/prometheus/common v0.45.0
+## explicit; go 1.20
 github.com/prometheus/common/expfmt
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
 github.com/prometheus/common/model
-# github.com/prometheus/procfs v0.10.1
+# github.com/prometheus/procfs v0.12.0
 ## explicit; go 1.19
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# golang.org/x/sys v0.8.0
-## explicit; go 1.17
-golang.org/x/sys/internal/unsafeheader
+# golang.org/x/sys v0.14.0
+## explicit; go 1.18
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# google.golang.org/protobuf v1.30.0
+# google.golang.org/protobuf v1.31.0
 ## explicit; go 1.11
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
@@ -68,10 +68,8 @@ google.golang.org/protobuf/internal/set
 google.golang.org/protobuf/internal/strs
 google.golang.org/protobuf/internal/version
 google.golang.org/protobuf/proto
-google.golang.org/protobuf/reflect/protodesc
 google.golang.org/protobuf/reflect/protoreflect
 google.golang.org/protobuf/reflect/protoregistry
 google.golang.org/protobuf/runtime/protoiface
 google.golang.org/protobuf/runtime/protoimpl
-google.golang.org/protobuf/types/descriptorpb
 google.golang.org/protobuf/types/known/timestamppb
