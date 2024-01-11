@@ -98,12 +98,11 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 		upstreamURL += r.RequestURI
 	}
 
-	var body io.Reader
+	body := r.Body
+
 	if f.BufferHTTPBody {
 		reqBody, _ := io.ReadAll(r.Body)
-		body = bytes.NewReader(reqBody)
-	} else {
-		body = r.Body
+		body = io.NopCloser(bytes.NewReader(reqBody))
 	}
 
 	request, err := http.NewRequest(r.Method, upstreamURL, body)
@@ -130,11 +129,10 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	}
 	defer cancel()
 
-	if r.Header.Get("Accept") == "text/event-stream" {
-
+	if strings.HasPrefix(r.Header.Get("Accept"), "text/event-stream") {
 		ww := fhttputil.NewHttpWriteInterceptor(w)
 
-		f.ReverseProxy.ServeHTTP(ww, request)
+		f.ReverseProxy.ServeHTTP(w, r)
 		done := time.Since(startedTime)
 
 		log.Printf("%s %s - %d - Bytes: %s (%.4fs)", r.Method, r.RequestURI, ww.Status(), units.HumanSize(float64(ww.BytesWritten())), done.Seconds())

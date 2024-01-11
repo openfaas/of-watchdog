@@ -342,6 +342,8 @@ func getEnvironment(r *http.Request) []string {
 }
 
 func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs bool, logBufferSize int) func(http.ResponseWriter, *http.Request) {
+	upstreamURL, _ := url.Parse(watchdogConfig.UpstreamURL)
+
 	commandName, arguments := watchdogConfig.Process()
 	functionInvoker := executor.HTTPFunctionRunner{
 		ExecTimeout:    watchdogConfig.ExecTimeout,
@@ -352,6 +354,8 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs boo
 		LogBufferSize:  logBufferSize,
 		ReverseProxy: &httputil.ReverseProxy{
 			Director: func(req *http.Request) {
+				req.URL.Host = upstreamURL.Host
+				req.URL.Scheme = "http"
 			},
 			ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			},
@@ -378,7 +382,6 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs boo
 		req := executor.FunctionRequest{
 			Process:      commandName,
 			ProcessArgs:  arguments,
-			InputReader:  r.Body,
 			OutputWriter: w,
 		}
 
