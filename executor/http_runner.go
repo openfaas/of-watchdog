@@ -9,11 +9,10 @@ import (
 	"fmt"
 	"io"
 
-	units "github.com/docker/go-units"
-
 	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"os/exec"
@@ -21,6 +20,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	units "github.com/docker/go-units"
+	fhttputil "github.com/openfaas/faas-provider/httputil"
 )
 
 // HTTPFunctionRunner creates and maintains one process responsible for handling all calls
@@ -38,6 +40,7 @@ type HTTPFunctionRunner struct {
 	BufferHTTPBody bool
 	LogPrefix      bool
 	LogBufferSize  int
+	ReverseProxy   *httputil.ReverseProxy
 }
 
 // Start forks the process used for processing incoming requests
@@ -127,55 +130,66 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	}
 	defer cancel()
 
-	res, err := f.Client.Do(request.WithContext(reqCtx))
-	if err != nil {
-		log.Printf("Upstream HTTP request error: %s\n", err.Error())
+	if r.Header.Get("Accept") == "text/event-stream" {
 
-		// Error unrelated to context / deadline
-		if reqCtx.Err() == nil {
+		ww := fhttputil.NewHttpWriteInterceptor(w)
+
+		f.ReverseProxy.ServeHTTP(ww, request)
+		done := time.Since(startedTime)
+
+		log.Printf("%s %s - %d - Bytes: %s (%.4fs)", r.Method, r.RequestURI, ww.Status(), units.HumanSize(float64(ww.BytesWritten())), done.Seconds())
+	} else {
+
+		res, err := f.Client.Do(request.WithContext(reqCtx))
+		if err != nil {
+			log.Printf("Upstream HTTP request error: %s\n", err.Error())
+
+			// Error unrelated to context / deadline
+			if reqCtx.Err() == nil {
+				w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
+
+				w.WriteHeader(http.StatusInternalServerError)
+
+				return nil
+			}
+
+			<-reqCtx.Done()
+
+			if reqCtx.Err() != nil {
+				// Error due to timeout / deadline
+				log.Printf("Upstream HTTP killed due to exec_timeout: %s\n", f.ExecTimeout)
+				w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
+
+				w.WriteHeader(http.StatusGatewayTimeout)
+				return nil
+			}
+
 			w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
-
 			w.WriteHeader(http.StatusInternalServerError)
-
-			return nil
+			return err
 		}
 
-		<-reqCtx.Done()
+		copyHeaders(w.Header(), &res.Header)
+		done := time.Since(startedTime)
 
-		if reqCtx.Err() != nil {
-			// Error due to timeout / deadline
-			log.Printf("Upstream HTTP killed due to exec_timeout: %s\n", f.ExecTimeout)
-			w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
+		w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", done.Seconds()))
 
-			w.WriteHeader(http.StatusGatewayTimeout)
-			return nil
+		w.WriteHeader(res.StatusCode)
+		if res.Body != nil {
+			defer res.Body.Close()
+
+			bodyBytes, bodyErr := io.ReadAll(res.Body)
+			if bodyErr != nil {
+				log.Println("read body err", bodyErr)
+			}
+			w.Write(bodyBytes)
 		}
 
-		w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
-		w.WriteHeader(http.StatusInternalServerError)
-		return err
-	}
-
-	copyHeaders(w.Header(), &res.Header)
-	done := time.Since(startedTime)
-
-	w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", done.Seconds()))
-
-	w.WriteHeader(res.StatusCode)
-	if res.Body != nil {
-		defer res.Body.Close()
-
-		bodyBytes, bodyErr := io.ReadAll(res.Body)
-		if bodyErr != nil {
-			log.Println("read body err", bodyErr)
+		// Exclude logging for health check probes from the kubelet which can spam
+		// log collection systems.
+		if !strings.HasPrefix(r.UserAgent(), "kube-probe") {
+			log.Printf("%s %s - %s - ContentLength: %s (%.4fs)", r.Method, r.RequestURI, res.Status, units.HumanSize(float64(res.ContentLength)), done.Seconds())
 		}
-		w.Write(bodyBytes)
-	}
-
-	// Exclude logging for health check probes from the kubelet which can spam
-	// log collection systems.
-	if !strings.HasPrefix(r.UserAgent(), "kube-probe") {
-		log.Printf("%s %s - %s - ContentLength: %s (%.4fs)", r.Method, r.RequestURI, res.Status, units.HumanSize(float64(res.ContentLength)), done.Seconds())
 	}
 
 	return nil

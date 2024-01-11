@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"os/signal"
@@ -349,6 +350,13 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs boo
 		BufferHTTPBody: watchdogConfig.BufferHTTPBody,
 		LogPrefix:      prefixLogs,
 		LogBufferSize:  logBufferSize,
+		ReverseProxy: &httputil.ReverseProxy{
+			Director: func(req *http.Request) {
+			},
+			ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			},
+			ErrorLog: log.New(io.Discard, "", 0),
+		},
 	}
 
 	if len(watchdogConfig.UpstreamURL) == 0 {
