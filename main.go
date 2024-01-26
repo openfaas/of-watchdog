@@ -74,6 +74,15 @@ func main() {
 	baseFunctionHandler := buildRequestHandler(watchdogConfig, watchdogConfig.PrefixLogs)
 	requestHandler := baseFunctionHandler
 
+	if watchdogConfig.JWTAuthentication {
+		handler, err := executor.NewJWTAuthMiddleware(baseFunctionHandler)
+		if err != nil {
+			log.Fatalf("Error creating JWTAuthMiddleware: %s", err.Error())
+		}
+		requestHandler = handler
+
+	}
+
 	var limit limiter.Limiter
 	if watchdogConfig.MaxInflight > 0 {
 		requestLimiter := limiter.NewConcurrencyLimiter(requestHandler, watchdogConfig.MaxInflight)
@@ -115,6 +124,7 @@ func main() {
 		watchdogConfig.ExecTimeout,
 		watchdogConfig.HealthcheckInterval)
 
+	log.Printf("JWT Auth: %v\n", watchdogConfig.JWTAuthentication)
 	log.Printf("Listening on port: %d\n", watchdogConfig.TCPPort)
 
 	listenUntilShutdown(s,

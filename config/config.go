@@ -52,6 +52,10 @@ type WatchdogConfig struct {
 	// ReadyEndpoint is the custom readiness path for the watchdog. When non-empty
 	// the /_/ready endpoint with proxy the request to this path.
 	ReadyEndpoint string
+
+	// JWTAuthentication enables JWT authentication for the watchdog
+	// using the OpenFaaS gateway as the issuer.
+	JWTAuthentication bool
 }
 
 // Process returns a string for the process and a slice for the arguments from the FunctionProcess.
@@ -159,6 +163,8 @@ func New(env []string) (WatchdogConfig, error) {
 		return c, fmt.Errorf(`provide a "function_process" or "fprocess" environmental variable for your function`)
 	}
 
+	c.JWTAuthentication = getBool(envMap, "jwt_auth")
+
 	return c, nil
 }
 
@@ -215,7 +221,7 @@ func getInt(env map[string]string, key string, defaultValue int) int {
 }
 
 func getBool(env map[string]string, key string) bool {
-	if env[key] == "true" {
+	if env[key] == "true" || env[key] == "1" {
 		return true
 	}
 
