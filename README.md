@@ -93,7 +93,7 @@ Cons:
 * Daemons such as express/flask/sinatra can be unpredictable when used in this way so many need additional configuration
 * Additional memory may be occupied between invocations vs. forking model
 
-#### Structured logging
+#### 1.3 Structured logging
 
 It is not currently possible to have the watchdog's own messages outputted in JSON:
 
@@ -116,6 +116,16 @@ With `prefix_logs` off:
 
 ```json
 {"msg": "unable to connect to database"}
+```
+
+#### 1.4 Tracing / correlation IDs
+
+The gateway sends an `X-Call-Id` header which should be used in your own logger to correlate and trace requests.
+
+In HTTP mode, the watchdog will append the X-Call-Id to its own HTTP log messages in square brackets if you set the `log_callid` environment variable to true:
+
+```bash
+2024/04/25 17:29:58 GET / - 301 Moved Permanently - ContentLength: 39B (0.0037s) [079d9ff9-d7b7-4e37-b195-5ad520e6f797]
 ```
 
 ### 2. Serializing fork (mode=serializing)
@@ -181,10 +191,10 @@ Environmental variables:
 | `http_buffer_req_body`           |  `http` mode only - buffers request body in memory before forwarding upstream to your template's `upstream_url`. Use if your upstream HTTP server does not accept `Transfer-Encoding: chunked`, for example WSGI tends to require this setting. Default: `false`                |
 | `http_upstream_url`              |  `http` mode only - where to forward requests i.e. `http://127.0.0.1:5000`      |
 | `jwt_auth`                       | For OpenFaaS for Enterprises customers only. When set to `true`, the watchdog will require a JWT token to be passed as a Bearer token in the Authorization header. This token can only be obtained through the OpenFaaS gateway using a token exchange using the `http://gateway.openfaas:8080` address as the authority. |
-| `jwt_auth_debug`                 | Print out debug messages from the JWT authentication process. |
-| `jwt_auth_local`                 | When set to `true`, the watchdog will attempt to validate the JWT token using a port-forwarded or local gateway running at `http://127.0.0.1:8080` instead of attempting to reach it via an in-cluster service name. |
+| `jwt_auth_debug`                 | Print out debug messages from the JWT authentication process (OpenFaaS for Enterprises only). |
+| `jwt_auth_local`                 | When set to `true`, the watchdog will attempt to validate the JWT token using a port-forwarded or local gateway running at `http://127.0.0.1:8080` instead of attempting to reach it via an in-cluster service name  (OpenFaaS for Enterprises only). |
 | `log_buffer_size`                | The amount of bytes to read from stderr/stdout for log lines. When exceeded, the user will see an "bufio.Scanner: token too long" error. The default value is `bufio.MaxScanTokenSize`           |
-| `log_call_id`                    | In HTTP mode, when printing a response code, content-length and timing, include the X-Call-Id header in brackets i.e. `[079d9ff9-d7b7-4e37-b195-5ad520e6f797]` or `[none]` when it's empty`                | Default: `false` |
+| `log_call_id`                    | In HTTP mode, when printing a response code, content-length and timing, include the X-Call-Id header at the end of the line in brackets i.e. `[079d9ff9-d7b7-4e37-b195-5ad520e6f797]` or `[none]` when it's empty. Default: `false` |
 | `max_inflight`                   |  Limit the maximum number of requests in flight, and return a HTTP status 429 when exceeded           |
 | `mode`                           |  The mode which of-watchdog operates in, Default `streaming` [see doc](#3-streaming-fork-modestreaming---default). Options are [http](#1-http-modehttp), [serialising fork](#2-serializing-fork-modeserializing), [streaming fork](#3-streaming-fork-modestreaming---default), [static](#4-static-modestatic) |
 | `port`                           |  Specify an alternative TCP port for testing. Default: `8080`            |
