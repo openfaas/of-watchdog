@@ -56,18 +56,9 @@ Any other HTTP requests:
 
 HTTP mode is recommend for all templates where the target language has a HTTP server implementation available.
 
-See a few different examples of templates, more are available via `faas-cli template store list`
+See a few different examples of templates, more are available via `faas-cli template store list`, such as `golang-middleware`, `python3-http` and `node*`.
 
-| Template         | HTTP framework     | Repo           |
-| ---------------- | ------------------ | ----------------------------------------------------------- |
-| Node.js 12 (LTS) | Express.js         | https://github.com/openfaas/templates/            |
-| Python 3 & 2.7   | Flask    | https://github.com/openfaas-incubator/python-flask-template |
-| Golang           | Go HTTP (stdlib)   | https://github.com/openfaas-incubator/golang-http-template  |
-| Golang           | (http.HandlerFunc) | https://github.com/openfaas-incubator/golang-http-template  |
-| Ruby   | Sinatra  | https://github.com/openfaas-incubator/ruby-http   |
-| Java 11          | Sun HTTP / Gradle  | https://github.com/openfaas/templates/            |
-
-Unofficial: [.NET Core / C# and Kestrel](https://github.com/burtonr/csharp-kestrel-template)
+To get the repository for a specific template use `faas-cli template store describe NAME`.
 
 #### 1.2 Description
 
@@ -101,6 +92,31 @@ Cons:
 * One more HTTP hop in the chain between the client and the function
 * Daemons such as express/flask/sinatra can be unpredictable when used in this way so many need additional configuration
 * Additional memory may be occupied between invocations vs. forking model
+
+#### Structured logging
+
+It is not currently possible to have the watchdog's own messages outputted in JSON:
+
+```bash
+2024/04/25 17:29:06 Listening on port: 8080
+2024/04/25 17:29:06 Writing lock-file to: /tmp/.lock
+2024/04/25 17:29:06 Metrics listening on port: 8081
+2024/04/25 17:29:08 GET / - 301 Moved Permanently - ContentLength: 39B (0.0049s) [test]
+```
+
+However, you can write your own log lines in JSON. Just set the `prefix_logs` environment variable to `false`, to remove the default prefix that the watchdog emits otherwise.
+
+With `prefix_logs` on:
+
+```
+2024-04-24T21:00:04Z {"msg": "unable to connect to database"}
+```
+
+With `prefix_logs` off:
+
+```json
+{"msg": "unable to connect to database"}
+```
 
 ### 2. Serializing fork (mode=serializing)
 
@@ -168,6 +184,7 @@ Environmental variables:
 | `jwt_auth_debug`                 | Print out debug messages from the JWT authentication process. |
 | `jwt_auth_local`                 | When set to `true`, the watchdog will attempt to validate the JWT token using a port-forwarded or local gateway running at `http://127.0.0.1:8080` instead of attempting to reach it via an in-cluster service name. |
 | `log_buffer_size`                | The amount of bytes to read from stderr/stdout for log lines. When exceeded, the user will see an "bufio.Scanner: token too long" error. The default value is `bufio.MaxScanTokenSize`           |
+| `log_call_id`                    | In HTTP mode, when printing a response code, content-length and timing, include the X-Call-Id header in brackets i.e. `[079d9ff9-d7b7-4e37-b195-5ad520e6f797]` or `[none]` when it's empty`                | Default: `false` |
 | `max_inflight`                   |  Limit the maximum number of requests in flight, and return a HTTP status 429 when exceeded           |
 | `mode`                           |  The mode which of-watchdog operates in, Default `streaming` [see doc](#3-streaming-fork-modestreaming---default). Options are [http](#1-http-modehttp), [serialising fork](#2-serializing-fork-modeserializing), [streaming fork](#3-streaming-fork-modestreaming---default), [static](#4-static-modestatic) |
 | `port`                           |  Specify an alternative TCP port for testing. Default: `8080`            |

@@ -40,6 +40,7 @@ type HTTPFunctionRunner struct {
 	BufferHTTPBody bool
 	LogPrefix      bool
 	LogBufferSize  int
+	LogCallId      bool
 	ReverseProxy   *httputil.ReverseProxy
 }
 
@@ -186,7 +187,16 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 		// Exclude logging for health check probes from the kubelet which can spam
 		// log collection systems.
 		if !strings.HasPrefix(r.UserAgent(), "kube-probe") {
-			log.Printf("%s %s - %s - ContentLength: %s (%.4fs)", r.Method, r.RequestURI, res.Status, units.HumanSize(float64(res.ContentLength)), done.Seconds())
+			if f.LogCallId {
+				callId := r.Header.Get("X-Call-Id")
+				if callId == "" {
+					callId = "none"
+				}
+
+				log.Printf("%s %s - %s - ContentLength: %s (%.4fs) [%s]", r.Method, r.RequestURI, res.Status, units.HumanSize(float64(res.ContentLength)), done.Seconds(), callId)
+			} else {
+				log.Printf("%s %s - %s - ContentLength: %s (%.4fs)", r.Method, r.RequestURI, res.Status, units.HumanSize(float64(res.ContentLength)), done.Seconds())
+			}
 		}
 	}
 

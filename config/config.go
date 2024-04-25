@@ -56,6 +56,10 @@ type WatchdogConfig struct {
 	// JWTAuthentication enables JWT authentication for the watchdog
 	// using the OpenFaaS gateway as the issuer.
 	JWTAuthentication bool
+
+	// LogCallId includes a prefix of the X-Call-Id in any log statements in
+	// HTTP mode.
+	LogCallId bool
 }
 
 // Process returns a string for the process and a slice for the arguments from the FunctionProcess.
@@ -130,6 +134,15 @@ func New(env []string) (WatchdogConfig, error) {
 		}
 	}
 
+	var logCallId bool
+	if val, exists := envMap["log_callid"]; exists {
+		if val == "1" {
+			logCallId = true
+		} else {
+			logCallId, _ = strconv.ParseBool(val)
+		}
+	}
+
 	c := WatchdogConfig{
 		TCPPort:             getInt(envMap, "port", 8080),
 		HTTPReadTimeout:     getDuration(envMap, "read_timeout", defaultTimeout),
@@ -149,6 +162,7 @@ func New(env []string) (WatchdogConfig, error) {
 		PrefixLogs:          prefixLogs,
 		LogBufferSize:       logBufferSize,
 		ReadyEndpoint:       envMap["ready_path"],
+		LogCallId:           logCallId,
 	}
 
 	if val := envMap["mode"]; len(val) > 0 {

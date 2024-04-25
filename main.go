@@ -362,6 +362,7 @@ func makeHTTPRequestHandler(watchdogConfig config.WatchdogConfig, prefixLogs boo
 		BufferHTTPBody: watchdogConfig.BufferHTTPBody,
 		LogPrefix:      prefixLogs,
 		LogBufferSize:  logBufferSize,
+		LogCallId:      watchdogConfig.LogCallId,
 		ReverseProxy: &httputil.ReverseProxy{
 			Director: func(req *http.Request) {
 				req.URL.Host = upstreamURL.Host
