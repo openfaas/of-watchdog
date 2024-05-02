@@ -18,7 +18,7 @@ import (
 
 func NewJWTAuthMiddleware(next http.Handler) (http.Handler, error) {
 
-	var authority = "https://gateway.openfaas:8080/.well-known/openid-configuration"
+	var authority = "http://gateway.openfaas:8080/.well-known/openid-configuration"
 	if v, ok := os.LookupEnv("jwt_auth_local"); ok && (v == "true" || v == "1") {
 		authority = "http://127.0.0.1:8000/.well-known/openid-configuration"
 	}
