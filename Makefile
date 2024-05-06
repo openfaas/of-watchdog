@@ -10,7 +10,7 @@ LDFLAGS := "-s -w -X main.Version=$(GIT_VERSION) -X main.GitCommit=$(GIT_COMMIT)
 SERVER?=ghcr.io
 OWNER?=openfaas
 IMG_NAME?=of-watchdog
-TAG?=latest
+TAG?=$(GIT_VERSION)
 
 export GOFLAGS=-mod=vendor
 
