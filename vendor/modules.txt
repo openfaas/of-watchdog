@@ -10,17 +10,9 @@ github.com/davecgh/go-spew/spew
 # github.com/docker/go-units v0.5.0
 ## explicit
 github.com/docker/go-units
-# github.com/golang-jwt/jwt/v4 v4.5.0
-## explicit; go 1.16
-github.com/golang-jwt/jwt/v4
-# github.com/golang/protobuf v1.5.4
-## explicit; go 1.17
-# github.com/gorilla/mux v1.8.1
-## explicit; go 1.20
-# github.com/matttproud/golang_protobuf_extensions v1.0.4
-## explicit; go 1.9
-# github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0
-## explicit; go 1.19
+# github.com/golang-jwt/jwt/v5 v5.2.1
+## explicit; go 1.18
+github.com/golang-jwt/jwt/v5
 # github.com/openfaas/faas-middleware v1.2.3
 ## explicit; go 1.20
 github.com/openfaas/faas-middleware/concurrency-limiter
