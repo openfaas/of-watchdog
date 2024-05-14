@@ -199,23 +199,6 @@ type OpenIDConfiguration struct {
 	JWKSURI string `json:"jwks_uri"`
 }
 
-func getFnName() (string, error) {
-	name, ok := os.LookupEnv("OPENFAAS_NAME")
-	if !ok || len(name) == 0 {
-		return "", fmt.Errorf("env variable 'OPENFAAS_NAME' not set")
-	}
-
-	return name, nil
-}
-
-func getFnNamespace() (string, error) {
-	nsVal, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
-	if err != nil {
-		return "", err
-	}
-	return string(nsVal), nil
-}
-
 type FunctionClaims struct {
 	jwt.RegisteredClaims
 
@@ -281,4 +264,27 @@ func wildCardToRegexp(pattern string) string {
 		result.WriteString(regexp.QuoteMeta(literal))
 	}
 	return result.String()
+}
+
+func getFnName() (string, error) {
+	name, ok := os.LookupEnv("OPENFAAS_NAME")
+	if !ok || len(name) == 0 {
+		return "", fmt.Errorf("env variable 'OPENFAAS_NAME' not set")
+	}
+
+	return name, nil
+}
+
+// getFnNamespace gets the namespace name from the env variable OPENFAAS_NAMESPACE
+// or reads it from the service account if the env variable is not present
+func getFnNamespace() (string, error) {
+	if namespace, ok := os.LookupEnv("OPENFAAS_NAMESPACE"); ok {
+		return namespace, nil
+	}
+
+	nsVal, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	if err != nil {
+		return "", err
+	}
+	return string(nsVal), nil
 }
