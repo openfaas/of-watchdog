@@ -44,6 +44,10 @@ type ConcurrencyLimiter struct {
 }
 
 func (cl *ConcurrencyLimiter) Met() bool {
+	if cl == nil {
+		return false
+	}
+
 	// We should not have any ConcurrencyLimiter created with a limit of 0
 	// but return early if that's the case.
 	if cl.maxInflightRequests == 0 {

@@ -13,8 +13,9 @@ github.com/docker/go-units
 # github.com/golang-jwt/jwt/v5 v5.2.1
 ## explicit; go 1.18
 github.com/golang-jwt/jwt/v5
-# github.com/openfaas/faas-middleware v1.2.3
+# github.com/openfaas/faas-middleware v1.2.4
 ## explicit; go 1.20
+github.com/openfaas/faas-middleware/auth
 github.com/openfaas/faas-middleware/concurrency-limiter
 # github.com/openfaas/faas-provider v0.25.3
 ## explicit; go 1.20
