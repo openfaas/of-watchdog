@@ -57,6 +57,13 @@ type WatchdogConfig struct {
 	// using the OpenFaaS gateway as the issuer.
 	JWTAuthentication bool
 
+	// JWTAuthDebug enables debug logging for the JWT authentication middleware.
+	JWTAuthDebug bool
+
+	// JWTAuthLocal indicates wether the JWT authentication middleware should use a port-forwarded or
+	// local gateway running at `http://127.0.0.1:8000` instead of attempting to reach it via an in-cluster service
+	JWTAuthLocal bool
+
 	// LogCallId includes a prefix of the X-Call-Id in any log statements in
 	// HTTP mode.
 	LogCallId bool
@@ -178,6 +185,8 @@ func New(env []string) (WatchdogConfig, error) {
 	}
 
 	c.JWTAuthentication = getBool(envMap, "jwt_auth")
+	c.JWTAuthDebug = getBool(envMap, "jwt_auth_debug")
+	c.JWTAuthLocal = getBool(envMap, "jwt_auth_local")
 
 	return c, nil
 }
