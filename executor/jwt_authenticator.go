@@ -17,6 +17,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const functionRealm = "IAM function invoke"
+
 func NewJWTAuthMiddleware(next http.Handler) (http.Handler, error) {
 	var authority = "http://gateway.openfaas:8080/.well-known/openid-configuration"
 	if v, ok := os.LookupEnv("jwt_auth_local"); ok && (v == "true" || v == "1") {
@@ -71,7 +73,7 @@ func NewJWTAuthMiddleware(next http.Handler) (http.Handler, error) {
 		}
 
 		if bearer == "" {
-			http.Error(w, "Bearer must be present in Authorization header", http.StatusUnauthorized)
+			httpUnauthorized(w, "Bearer must be present in Authorization header")
 			log.Printf("%s %s - %d ACCESS DENIED - (%s)", r.Method, r.URL.Path, http.StatusUnauthorized, time.Since(st).Round(time.Millisecond))
 			return
 		}
@@ -108,14 +110,13 @@ func NewJWTAuthMiddleware(next http.Handler) (http.Handler, error) {
 			return key.Key.(crypto.PublicKey), nil
 		}, parseOptions...)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("failed to parse JWT token: %s", err), http.StatusUnauthorized)
-
+			httpUnauthorized(w, fmt.Sprintf("failed to parse JWT token: %s", err))
 			log.Printf("%s %s - %d ACCESS DENIED - (%s)", r.Method, r.URL.Path, http.StatusUnauthorized, time.Since(st).Round(time.Millisecond))
 			return
 		}
 
 		if !token.Valid {
-			http.Error(w, fmt.Sprintf("invalid JWT token: %s", bearer), http.StatusUnauthorized)
+			httpUnauthorized(w, fmt.Sprintf("invalid JWT token: %s", bearer))
 
 			log.Printf("%s %s - %d ACCESS DENIED - (%s)", r.Method, r.URL.Path, http.StatusUnauthorized, time.Since(st).Round(time.Millisecond))
 			return
@@ -130,6 +131,15 @@ func NewJWTAuthMiddleware(next http.Handler) (http.Handler, error) {
 
 		next.ServeHTTP(w, r)
 	}), nil
+}
+
+// httpUnauthorized replies to the request with the specified error message and 401 HTTP code.
+// It sets the WWW-Authenticate header.
+// It does not otherwise end the request; the caller should ensure no further writes are done to w.
+// The error message should be plain text.
+func httpUnauthorized(w http.ResponseWriter, err string) {
+	w.Header().Set("WWW-Authenticate", fmt.Sprintf("Bearer realm=%s", functionRealm))
+	http.Error(w, err, http.StatusUnauthorized)
 }
 
 func getKeyset(uri string) (jwk.KeySpecSet, error) {
