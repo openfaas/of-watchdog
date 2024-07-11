@@ -118,11 +118,13 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	request.Host = r.Host
 	copyHeaders(request.Header, &r.Header)
 
+	execTimeout := getTimeout(r, f.ExecTimeout)
+
 	var reqCtx context.Context
 	var cancel context.CancelFunc
 
-	if f.ExecTimeout.Nanoseconds() > 0 {
-		reqCtx, cancel = context.WithTimeout(r.Context(), f.ExecTimeout)
+	if execTimeout.Nanoseconds() > 0 {
+		reqCtx, cancel = context.WithTimeout(r.Context(), execTimeout)
 	} else {
 		reqCtx = r.Context()
 		cancel = func() {
@@ -201,6 +203,20 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	}
 
 	return nil
+}
+
+func getTimeout(r *http.Request, defaultTimeout time.Duration) time.Duration {
+	execTimeout := defaultTimeout
+	if v := r.Header.Get("X-Timeout"); len(v) > 0 {
+		dur, err := time.ParseDuration(v)
+		if err == nil {
+			if dur <= defaultTimeout {
+				execTimeout = dur
+			}
+		}
+	}
+
+	return execTimeout
 }
 
 func copyHeaders(destination http.Header, source *http.Header) {

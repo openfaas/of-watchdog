@@ -128,6 +128,14 @@ In HTTP mode, the watchdog will append the X-Call-Id to its own HTTP log message
 2024/04/25 17:29:58 GET / - 301 Moved Permanently - ContentLength: 39B (0.0037s) [079d9ff9-d7b7-4e37-b195-5ad520e6f797]
 ```
 
+#### 1.5 Reducing timeouts
+
+If a function has a timeout set via `exec_timeout` of a large value like `1h`, but you need an individual request to timeout earlier, i.e. `1m`, then you can pass in a HTTP header of `X-Timeout` with a Go duration to override the behaviour.
+
+The value for `X-Timeout` must be equal to or shorter than the `exec_timeout` environment variable.
+
+`X-Timeout` cannot be set when the `exec_timeout` is set to `0` or hasn't been specified.
+
 ### 2. Serializing fork (mode=serializing)
 
 #### 2.1 Status
