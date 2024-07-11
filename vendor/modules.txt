@@ -15,11 +15,14 @@ github.com/docker/go-units
 github.com/golang-jwt/jwt/v5
 # github.com/gorilla/mux v1.8.0
 ## explicit; go 1.12
+# github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
+## explicit
+github.com/munnerz/goautoneg
 # github.com/openfaas/faas-middleware v1.2.4
 ## explicit; go 1.20
 github.com/openfaas/faas-middleware/auth
 github.com/openfaas/faas-middleware/concurrency-limiter
-# github.com/openfaas/faas-provider v0.25.3
+# github.com/openfaas/faas-provider v0.25.4
 ## explicit; go 1.20
 github.com/openfaas/faas-provider/httputil
 # github.com/prometheus/client_golang v1.19.1
@@ -34,10 +37,9 @@ github.com/prometheus/client_golang/prometheus/testutil/promlint/validations
 # github.com/prometheus/client_model v0.6.1
 ## explicit; go 1.19
 github.com/prometheus/client_model/go
-# github.com/prometheus/common v0.54.0
+# github.com/prometheus/common v0.55.0
 ## explicit; go 1.20
 github.com/prometheus/common/expfmt
-github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
 github.com/prometheus/common/model
 # github.com/prometheus/procfs v0.15.1
 ## explicit; go 1.20
@@ -60,7 +62,7 @@ golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/nacl/box
 golang.org/x/crypto/nacl/secretbox
 golang.org/x/crypto/salsa20/salsa
-# golang.org/x/sys v0.21.0
+# golang.org/x/sys v0.22.0
 ## explicit; go 1.18
 golang.org/x/sys/cpu
 golang.org/x/sys/unix
