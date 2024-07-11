@@ -13,8 +13,6 @@ github.com/docker/go-units
 # github.com/golang-jwt/jwt/v5 v5.2.1
 ## explicit; go 1.18
 github.com/golang-jwt/jwt/v5
-# github.com/gorilla/mux v1.8.0
-## explicit; go 1.12
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
@@ -51,11 +49,10 @@ github.com/prometheus/procfs/internal/util
 github.com/rakutentech/jwk-go/jwk
 github.com/rakutentech/jwk-go/jwktypes
 github.com/rakutentech/jwk-go/okp
-# golang.org/x/crypto v0.24.0
-## explicit; go 1.18
+# golang.org/x/crypto v0.25.0
+## explicit; go 1.20
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/curve25519
-golang.org/x/crypto/curve25519/internal/field
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
