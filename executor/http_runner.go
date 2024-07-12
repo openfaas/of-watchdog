@@ -148,6 +148,7 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 			// Error unrelated to context / deadline
 			if reqCtx.Err() == nil {
 				w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
+				w.Header().Add("X-OpenFaaS-Internal", "of-watchdog")
 
 				w.WriteHeader(http.StatusInternalServerError)
 
@@ -160,12 +161,15 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 				// Error due to timeout / deadline
 				log.Printf("Upstream HTTP killed due to exec_timeout: %s\n", f.ExecTimeout)
 				w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
+				w.Header().Add("X-OpenFaaS-Internal", "of-watchdog")
 
 				w.WriteHeader(http.StatusGatewayTimeout)
 				return nil
 			}
 
 			w.Header().Set("X-Duration-Seconds", fmt.Sprintf("%f", time.Since(startedTime).Seconds()))
+			w.Header().Add("X-OpenFaaS-Internal", "of-watchdog")
+
 			w.WriteHeader(http.StatusInternalServerError)
 			return err
 		}
