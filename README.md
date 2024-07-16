@@ -78,13 +78,13 @@ Example usage for testing:
 * Forward to an Nginx container:
 
 ```
-$ go build ; mode=http port=8081 fprocess="docker run -p 80:80 --name nginx -t nginx" upstream_url=http://127.0.0.1:80 ./of-watchdog
+$ go build && mode=http port=8081 fprocess="docker run -p 80:80 --name nginx -t nginx" upstream_url=http://127.0.0.1:80 ./of-watchdog
 ```
 
 * Forward to a Node.js / Express.js hello-world app:
 
 ```
-$ go build ; mode=http port=8081 fprocess="node expressjs-hello-world.js" upstream_url=http://127.0.0.1:3000 ./of-watchdog
+$ go build && mode=http port=8081 fprocess="node expressjs-hello-world.js" upstream_url=http://127.0.0.1:3000 ./of-watchdog
 ```
 
 Cons:

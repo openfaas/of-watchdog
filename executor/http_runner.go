@@ -183,11 +183,9 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 		if res.Body != nil {
 			defer res.Body.Close()
 
-			bodyBytes, bodyErr := io.ReadAll(res.Body)
-			if bodyErr != nil {
-				log.Println("read body err", bodyErr)
+			if _, err := io.Copy(w, res.Body); err != nil {
+				log.Printf("Error copying response body: %s", err)
 			}
-			w.Write(bodyBytes)
 		}
 
 		// Exclude logging for health check probes from the kubelet which can spam
