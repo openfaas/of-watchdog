@@ -13,11 +13,6 @@ import (
 func bindLoggingPipe(name string, pipe io.Reader, output io.Writer, logPrefix bool, maxBufferSize int) {
 	log.Printf("Started logging: %s from function.", name)
 
-	scanner := bufio.NewScanner(pipe)
-
-	buffer := make([]byte, maxBufferSize)
-	scanner.Buffer(buffer, maxBufferSize)
-
 	logFlags := log.Flags()
 	prefix := log.Prefix()
 	if logPrefix == false {
@@ -27,16 +22,47 @@ func bindLoggingPipe(name string, pipe io.Reader, output io.Writer, logPrefix bo
 
 	logger := log.New(output, prefix, logFlags)
 
-	go func() {
-		for scanner.Scan() {
-			if logPrefix {
-				logger.Printf("%s: %s", name, scanner.Text())
-			} else {
-				logger.Print(scanner.Text())
+	if maxBufferSize >= 0 {
+		go pipeBuffered(name, pipe, logger, logPrefix, maxBufferSize)
+	} else {
+		go pipeUnbuffered(name, pipe, logger, logPrefix)
+	}
+}
+
+func pipeBuffered(name string, pipe io.Reader, logger *log.Logger, logPrefix bool, maxBufferSize int) {
+	buf := make([]byte, maxBufferSize)
+	scanner := bufio.NewScanner(pipe)
+	scanner.Buffer(buf, maxBufferSize)
+
+	for scanner.Scan() {
+		if logPrefix {
+			logger.Printf("%s: %s", name, scanner.Text())
+		} else {
+			logger.Print(scanner.Text())
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		log.Printf("Error reading %s: %s", name, err)
+	}
+}
+
+func pipeUnbuffered(name string, pipe io.Reader, logger *log.Logger, logPrefix bool) {
+
+	r := bufio.NewReader(pipe)
+
+	for {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			if err != io.EOF {
+				log.Printf("Error reading %s: %s", name, err)
 			}
+			break
 		}
-		if err := scanner.Err(); err != nil {
-			log.Printf("Error scanning %s: %s", name, err.Error())
+		if logPrefix {
+			logger.Printf("%s: %s", name, line)
+		} else {
+			logger.Print(line)
 		}
-	}()
+	}
+
 }
