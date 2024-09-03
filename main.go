@@ -125,7 +125,10 @@ func main() {
 		watchdogConfig.ExecTimeout,
 		watchdogConfig.HealthcheckInterval)
 
-	log.Printf("JWT Auth: %v\n", watchdogConfig.JWTAuthentication)
+	if watchdogConfig.JWTAuthentication {
+		log.Printf("JWT Auth: %v\n", watchdogConfig.JWTAuthentication)
+	}
+
 	log.Printf("Listening on port: %d\n", watchdogConfig.TCPPort)
 
 	listenUntilShutdown(s,
