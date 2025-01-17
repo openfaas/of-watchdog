@@ -16,9 +16,9 @@ jobs:
         with:
           fetch-depth: 1
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.22.x
+          go-version: 1.23.x
       - name: Make all
         run: make all
 
@@ -37,7 +37,7 @@ jobs:
 
       - name: Test and Build multiarch
         id: docker_build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./
           file: ./Dockerfile
