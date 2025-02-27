@@ -30,10 +30,14 @@ github.com/openfaas/faas-middleware v1.2.4 h1:NuZsuFismTx0AQcQJUotN4PnRMiw4m2TEx
 github.com/openfaas/faas-middleware v1.2.4/go.mod h1:XiprV9UlhsiC4drJ2rdo9q+IHBvcL5P607PDqzM6Yjg=
 github.com/openfaas/faas-provider v0.25.5 h1:qW2izX1otKfbOhArgf1GK9JjTqwBRL4BWioiJJVYH58=
 github.com/openfaas/faas-provider v0.25.5/go.mod h1:rMXbj+AYVpn82UoHIOgWHiDeV118t0bSxyoC9d00jpc=
+github.com/openfaas/faas-provider v0.25.6 h1:dAAR2L/LEy9lCneEqJG+mddDaVVDn9uKZ81egUg+tgo=
+github.com/openfaas/faas-provider v0.25.6/go.mod h1:rMXbj+AYVpn82UoHIOgWHiDeV118t0bSxyoC9d00jpc=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/prometheus/client_golang v1.20.5 h1:cxppBPuYhUnsO6yo/aoRol4L7q7UFfdm+bR9r+8l63Y=
 github.com/prometheus/client_golang v1.20.5/go.mod h1:PIEt8X02hGcP8JWbeHyeZ53Y/jReSnHgO035n//V5WE=
+github.com/prometheus/client_golang v1.21.0 h1:DIsaGmiaBkSangBgMtWdNfxbMNdku5IK6iNhrEqWvdA=
+github.com/prometheus/client_golang v1.21.0/go.mod h1:U9NM32ykUErtVBxdvD3zfi+EuFkkaBvMb09mIfe0Zgg=
 github.com/prometheus/client_model v0.6.1 h1:ZKSh/rekM+n3CeS952MLRAdFwIKqeY8b62p8ais2e9E=
 github.com/prometheus/client_model v0.6.1/go.mod h1:OrxVMOVHjw3lKMa8+x6HeMGkHMQyHDk9E3jmP2AmGiY=
 github.com/prometheus/common v0.62.0 h1:xasJaQlnWAeyHdUBeGjXmutelfJHWMRr+Fg4QszZ2Io=

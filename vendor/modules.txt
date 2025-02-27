@@ -10,8 +10,6 @@ github.com/docker/go-units
 # github.com/golang-jwt/jwt/v5 v5.2.1
 ## explicit; go 1.18
 github.com/golang-jwt/jwt/v5
-# github.com/gorilla/mux v1.8.1
-## explicit; go 1.20
 # github.com/klauspost/compress v1.17.11
 ## explicit; go 1.21
 github.com/klauspost/compress
@@ -31,11 +29,11 @@ github.com/munnerz/goautoneg
 ## explicit; go 1.20
 github.com/openfaas/faas-middleware/auth
 github.com/openfaas/faas-middleware/concurrency-limiter
-# github.com/openfaas/faas-provider v0.25.5
+# github.com/openfaas/faas-provider v0.25.6
 ## explicit; go 1.23
 github.com/openfaas/faas-provider/httputil
-# github.com/prometheus/client_golang v1.20.5
-## explicit; go 1.20
+# github.com/prometheus/client_golang v1.21.0
+## explicit; go 1.21
 github.com/prometheus/client_golang/internal/github.com/golang/gddo/httputil
 github.com/prometheus/client_golang/internal/github.com/golang/gddo/httputil/header
 github.com/prometheus/client_golang/prometheus
