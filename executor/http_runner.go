@@ -132,7 +132,8 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	}
 	defer cancel()
 
-	if strings.HasPrefix(r.Header.Get("Accept"), "text/event-stream") {
+	if strings.HasPrefix(r.Header.Get("Accept"), "text/event-stream") ||
+		r.Header.Get("Upgrade") == "websocket" {
 		ww := fhttputil.NewHttpWriteInterceptor(w)
 
 		f.ReverseProxy.ServeHTTP(w, r)
