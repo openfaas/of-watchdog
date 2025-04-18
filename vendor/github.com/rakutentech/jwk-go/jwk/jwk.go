@@ -53,6 +53,7 @@ func (jwk *JWK) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	m.marshalInt("exp", jwk.Exp)
 	m.marshalBytes("x", jwk.X)
 	m.marshalBytes("y", jwk.Y)
 	m.marshalBytes("n", jwk.N)

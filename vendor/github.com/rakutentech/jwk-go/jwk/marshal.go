@@ -2,12 +2,11 @@ package jwk
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
-
-	"crypto/elliptic"
 
 	"github.com/rakutentech/jwk-go/jwktypes"
 	"github.com/rakutentech/jwk-go/okp"
@@ -58,6 +57,11 @@ func (k *KeySpec) ToJWK() (*JWK, error) {
 	jwk.Alg = k.Algorithm
 	jwk.Use = k.Use
 	jwk.Exp = k.ExpiresAt.Unix()
+	// Do not set invalid negative expiration times (especially for the zero time value)
+	if jwk.Exp < 0 {
+		jwk.Exp = 0
+	}
+
 	return jwk, nil
 }
 

@@ -3,6 +3,7 @@ package jwk
 import (
 	"encoding/base64"
 	"encoding/json"
+	"strconv"
 )
 
 type orderedJsonMarshaller struct {
@@ -30,6 +31,14 @@ func (m *orderedJsonMarshaller) marshalString(name string, value string) error {
 	m.marshalKeyName(name)
 	m.buffer = append(m.buffer, quotedValue...)
 	return nil
+}
+
+func (m *orderedJsonMarshaller) marshalInt(name string, value int64) {
+	if value == 0 {
+		return
+	}
+	m.marshalKeyName(name)
+	m.buffer = strconv.AppendInt(m.buffer, value, 10)
 }
 
 func (m *orderedJsonMarshaller) marshalBytes(name string, value *keyBytes) {

@@ -37,6 +37,7 @@ type JWTAuthOptions struct {
 }
 
 func (a jwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
 	issuer := a.issuer
 
 	st := time.Now()
@@ -111,6 +112,8 @@ func (a jwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s %s - %d ACCESS DENIED - (%s)", r.Method, r.URL.Path, http.StatusForbidden, time.Since(st).Round(time.Millisecond))
 		return
 	}
+
+	r.Header.Set("X-Auth-Seconds", fmt.Sprintf("%f", time.Since(st).Seconds()))
 
 	a.next.ServeHTTP(w, r)
 }

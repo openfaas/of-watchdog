@@ -32,7 +32,13 @@ func (k *KeySpec) UnmarshalJSON(data []byte) error {
 	k.KeyID = jwk.Kid
 	k.Algorithm = jwk.Alg
 	k.Use = jwk.Use
-	k.ExpiresAt = time.Unix(jwk.Exp, 0)
+	if jwk.Exp > 0 {
+		// Expiry is set to a valid (positive) value
+		k.ExpiresAt = time.Unix(jwk.Exp, 0)
+	} else {
+		// Zero value for time.Time means no expiration
+		k.ExpiresAt = time.Time{}
+	}
 
 	return nil
 }
