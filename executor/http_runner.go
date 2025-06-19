@@ -132,8 +132,7 @@ func (f *HTTPFunctionRunner) Run(req FunctionRequest, contentLength int64, r *ht
 	}
 	defer cancel()
 
-	if strings.HasPrefix(r.Header.Get("Accept"), "text/event-stream") ||
-		r.Header.Get("Upgrade") == "websocket" {
+	if requiresStdlibProxy(r) {
 		ww := fhttputil.NewHttpWriteInterceptor(w)
 
 		f.ReverseProxy.ServeHTTP(w, r)
@@ -250,4 +249,14 @@ func makeProxyClient(dialTimeout time.Duration) *http.Client {
 	}
 
 	return &proxyClient
+}
+
+// requiresStdlibProxy checks if the request should be proxied using the standard library reverse proxy.
+// Support SSE, NDSJON and WebSockets through the stdlib reverse proxy
+func requiresStdlibProxy(req *http.Request) bool {
+	acceptHeader := strings.ToLower(req.Header.Get("Accept"))
+
+	return strings.Contains(acceptHeader, "text/event-stream") ||
+		strings.Contains(acceptHeader, "application/x-ndjson") ||
+		req.Header.Get("Upgrade") == "websocket"
 }
