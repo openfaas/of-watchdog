@@ -56,7 +56,7 @@ print-image:
 # Example:
 # SERVER=docker.io OWNER=alexellis2 TAG=ready make publish
 .PHONY: publish
-publish:
+publish: dist
 	@echo  $(SERVER)/$(OWNER)/$(IMG_NAME):$(TAG) && \
 	docker buildx create --use --name=multiarch --node=multiarch && \
 	docker buildx build \
