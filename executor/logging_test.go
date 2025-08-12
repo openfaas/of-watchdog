@@ -111,7 +111,7 @@ func TestBindLoggingPipe_ReadsValidSizedLines(t *testing.T) {
 		t.Fatalf("want output %q, but got %q", want, got)
 	}
 
-	t.Logf(out.String())
+	t.Logf("%s", out.String())
 	wantSt := `bufio.Scanner: token too long`
 	if strings.Contains(logs.String(), wantSt) {
 		t.Fatalf("Found error %s in output: %q", wantSt, logs.String())

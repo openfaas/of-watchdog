@@ -202,7 +202,7 @@ func mapEnv(env []string) map[string]string {
 			value := val[sep+1:]
 			mapped[key] = value
 		} else {
-			log.Printf("Bad environment: %s" + val)
+			log.Printf("Bad environment: %s", val)
 		}
 	}
 
