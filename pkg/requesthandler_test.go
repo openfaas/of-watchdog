@@ -1,7 +1,7 @@
 // Copyright (c) OpenFaaS Author(s) 2021. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-package main
+package pkg
 
 import (
 	"log"
@@ -15,9 +15,7 @@ import (
 func TestHealthHandler_StatusOK_LockFilePresent(t *testing.T) {
 	rr := httptest.NewRecorder()
 
-	present := lockFilePresent()
-
-	if present {
+	if lockFilePresent() {
 		path := filepath.Join(os.TempDir(), ".lock")
 		os.Remove(path)
 	}
@@ -29,7 +27,7 @@ func TestHealthHandler_StatusOK_LockFilePresent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := makeHealthHandler()
+	handler := makeHealthHandler(lockFilePresent)
 	handler(rr, req)
 
 	required := http.StatusOK
@@ -51,7 +49,7 @@ func TestHealthHandler_StatusInternalServerError_LockFileNotPresent(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := makeHealthHandler()
+	handler := makeHealthHandler(lockFilePresent)
 	handler(rr, req)
 
 	required := http.StatusServiceUnavailable
@@ -71,7 +69,7 @@ func TestHealthHandler_StatusMethodNotAllowed_ForWriteableVerbs(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		handler := makeHealthHandler()
+		handler := makeHealthHandler(lockFilePresent)
 		handler(rr, req)
 
 		required := http.StatusMethodNotAllowed

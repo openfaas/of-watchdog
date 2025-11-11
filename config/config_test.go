@@ -285,6 +285,23 @@ func Test_Timeouts(t *testing.T) {
 		}
 
 	}
+}
+
+func Test_InprocAllowsNoFprocess(t *testing.T) {
+	env := []string{
+		"mode=inproc",
+	}
+
+	actual, err := New(env)
+	if err != nil {
+		t.Errorf("Did not expect error but got: %s", err.Error())
+	}
+
+	modeWant := ModeInproc
+	modeGot := actual.OperationalMode
+	if modeWant != modeGot {
+		t.Errorf("Want %s. got: %s", WatchdogMode(modeWant), WatchdogMode(modeGot))
+	}
 
 }
 
