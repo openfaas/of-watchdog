@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -67,6 +68,9 @@ type WatchdogConfig struct {
 	// LogCallId includes a prefix of the X-Call-Id in any log statements in
 	// HTTP mode.
 	LogCallId bool
+
+	// Handler is the HTTP handler to use in "inproc" mode
+	Handler http.HandlerFunc
 }
 
 // Process returns a string for the process and a slice for the arguments from the FunctionProcess.
@@ -78,6 +82,10 @@ func (w WatchdogConfig) Process() (string, []string) {
 	}
 
 	return parts[0], []string{}
+}
+
+func (w *WatchdogConfig) SetHandler(handler http.HandlerFunc) {
+	w.Handler = handler
 }
 
 // New create config based upon environmental variables.
@@ -180,7 +188,7 @@ func New(env []string) (WatchdogConfig, error) {
 		return c, fmt.Errorf("HTTP write timeout must be over 0s")
 	}
 
-	if len(c.FunctionProcess) == 0 && c.OperationalMode != ModeStatic {
+	if len(c.FunctionProcess) == 0 && c.OperationalMode != ModeStatic && c.OperationalMode != ModeInproc {
 		return c, fmt.Errorf(`provide a "function_process" or "fprocess" environmental variable for your function`)
 	}
 
