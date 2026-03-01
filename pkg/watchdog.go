@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -50,8 +52,25 @@ func (w *Watchdog) Start(ctx context.Context) error {
 	baseFunctionHandler := buildRequestHandler(w.config, w.config.PrefixLogs)
 	requestHandler := baseFunctionHandler
 
+	drainCh := make(chan string, 1)
+	var drainOnce sync.Once
+	startDrain := func(reason string) {
+		drainOnce.Do(func() {
+			if err := markUnhealthy(); err != nil {
+				log.Printf("Unable to mark server as unhealthy: %s\n", err.Error())
+			}
+
+			log.Printf("Scheduling graceful shutdown: %s\n", reason)
+			drainCh <- reason
+		})
+	}
+
+	if w.config.OneShot {
+		requestHandler = makeOneShotHandler(requestHandler, w.config.ReadyEndpoint, startDrain)
+	}
+
 	if w.config.JWTAuthentication {
-		handler, err := makeJWTAuthHandler(w.config, baseFunctionHandler)
+		handler, err := makeJWTAuthHandler(w.config, requestHandler)
 		if err != nil {
 			return fmt.Errorf("error creating JWTAuthMiddleware: %w", err)
 		}
@@ -111,6 +130,7 @@ func (w *Watchdog) Start(ctx context.Context) error {
 		w.config.HealthcheckInterval,
 		w.config.HTTPWriteTimeout,
 		w.config.SuppressLock,
+		drainCh,
 		&httpMetrics)
 
 	return nil
@@ -122,10 +142,13 @@ func markUnhealthy() error {
 	path := filepath.Join(os.TempDir(), ".lock")
 	log.Printf("Removing lock-file : %s\n", path)
 	removeErr := os.Remove(path)
+	if errors.Is(removeErr, os.ErrNotExist) {
+		return nil
+	}
 	return removeErr
 }
 
-func listenUntilShutdown(s *http.Server, shutdownCtx context.Context, healthcheckInterval time.Duration, writeTimeout time.Duration, suppressLock bool, httpMetrics *metrics.Http) error {
+func listenUntilShutdown(s *http.Server, shutdownCtx context.Context, healthcheckInterval time.Duration, writeTimeout time.Duration, suppressLock bool, drain <-chan string, httpMetrics *metrics.Http) error {
 
 	idleConnsClosed := make(chan struct{})
 	go func() {
@@ -133,21 +156,32 @@ func listenUntilShutdown(s *http.Server, shutdownCtx context.Context, healthchec
 		signal.Notify(sig, syscall.SIGTERM)
 
 		reason := ""
+		drainDelay := healthcheckInterval
 
 		select {
 		case <-sig:
 			reason = "SIGTERM"
 		case <-shutdownCtx.Done():
 			reason = "Context cancelled"
+		case reason = <-drain:
+			drainDelay = 0
 		}
 
-		log.Printf("%s: no new connections in %s\n", reason, healthcheckInterval.String())
+		if drainDelay > 0 {
+			log.Printf("%s: no new connections in %s\n", reason, drainDelay.String())
+		} else {
+			log.Printf("%s: no new connections allowed immediately\n", reason)
+		}
 
 		if err := markUnhealthy(); err != nil {
 			log.Printf("Unable to mark server as unhealthy: %s\n", err.Error())
 		}
 
-		<-time.Tick(healthcheckInterval)
+		if drainDelay > 0 {
+			timer := time.NewTimer(drainDelay)
+			defer timer.Stop()
+			<-timer.C
+		}
 
 		connections := int64(testutil.ToFloat64(httpMetrics.InFlight))
 		log.Printf("No new connections allowed, draining: %d requests\n", connections)
@@ -191,6 +225,34 @@ func listenUntilShutdown(s *http.Server, shutdownCtx context.Context, healthchec
 	<-idleConnsClosed
 
 	return nil
+}
+
+func makeOneShotHandler(next http.Handler, readyEndpoint string, startDrain func(string)) http.Handler {
+	var served int32
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL != nil {
+			switch r.URL.Path {
+			case "/_/health", "/_/ready":
+				next.ServeHTTP(w, r)
+				return
+			case readyEndpoint:
+				if readyEndpoint != "" {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+		}
+
+		if !atomic.CompareAndSwapInt32(&served, 0, 1) {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte("watchdog is draining after serving a request"))
+			return
+		}
+
+		startDrain("one_shot")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func buildRequestHandler(cfg config.WatchdogConfig, prefixLogs bool) http.Handler {
