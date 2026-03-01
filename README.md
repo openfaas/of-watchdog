@@ -1,6 +1,6 @@
 # of-watchdog
 
-Reverse proxy for HTTP microservices and STDIO
+Reverse proxy/middleware for functions using STDIO/HTTP
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/openfaas/of-watchdog)](https://goreportcard.com/report/github.com/openfaas/of-watchdog) [![build](https://github.com/openfaas/of-watchdog/actions/workflows/build.yaml/badge.svg)](https://github.com/openfaas/of-watchdog/actions/workflows/build.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
