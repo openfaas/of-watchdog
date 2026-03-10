@@ -205,6 +205,7 @@ Environmental variables:
 | `log_call_id`                    | In HTTP mode, when printing a response code, content-length and timing, include the X-Call-Id header at the end of the line in brackets i.e. `[079d9ff9-d7b7-4e37-b195-5ad520e6f797]` or `[none]` when it's empty. Default: `false` |
 | `max_inflight`                   |  Limit the maximum number of requests in flight, and return a HTTP status 429 when exceeded           |
 | `mode`                           |  The mode which of-watchdog operates in, Default `streaming` [see doc](#3-streaming-fork-modestreaming---default). Options are [http](#1-http-modehttp), [serialising fork](#2-serializing-fork-modeserializing), [streaming fork](#3-streaming-fork-modestreaming---default), [static](#4-static-modestatic) |
+| `one_shot`                       |  When set to `true`, accept the first genuine invoke request, then immediately begin graceful shutdown and reject subsequent invoke requests. Readiness and health endpoints do not trigger this mode. |
 | `port`                           |  Specify an alternative TCP port for testing. Default: `8080`            |
 | `prefix_logs`                    |  When set to `true` the watchdog will add a prefix of "Date Time" + "stderr/stdout" to every line read from the function process. Default `true`             |
 | `read_timeout`                   |  HTTP timeout for reading the payload from the client caller (in seconds)          |
@@ -221,4 +222,3 @@ Unsupported options from the [Classic Watchdog](https://github.com/openfaas/clas
 | `write_debug`        | In the classic watchdog, this prints the response body out to the console |
 | `read_debug`         | In the classic watchdog, this prints the request body out to the console |
 | `combined_output`    | In the classic watchdog, this returns STDOUT and STDERR in the function's HTTP response, when off it only returns STDOUT and prints STDERR to the logs of the watchdog |
-
