@@ -44,7 +44,6 @@ hashgen:
 dist:
 	@echo "+ $@"
 	CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags $(LDFLAGS) -o bin/fwatchdog-amd64
-	GOARM=7 GOARCH=arm CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags $(LDFLAGS) -o bin/fwatchdog-arm
 	GOARCH=arm64 CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags $(LDFLAGS) -o bin/fwatchdog-arm64
 	GOOS=windows CGO_ENABLED=0 go build -mod=vendor -ldflags $(LDFLAGS) -o bin/fwatchdog.exe
 
