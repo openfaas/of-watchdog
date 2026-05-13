@@ -10,8 +10,6 @@ github.com/docker/go-units
 # github.com/golang-jwt/jwt/v5 v5.3.1
 ## explicit; go 1.21
 github.com/golang-jwt/jwt/v5
-# github.com/gorilla/mux v1.8.1
-## explicit; go 1.20
 # github.com/kylelemons/godebug v1.1.0
 ## explicit; go 1.11
 github.com/kylelemons/godebug/diff
@@ -22,7 +20,7 @@ github.com/munnerz/goautoneg
 ## explicit; go 1.20
 github.com/openfaas/faas-middleware/auth
 github.com/openfaas/faas-middleware/concurrency-limiter
-# github.com/openfaas/faas-provider v0.25.11
+# github.com/openfaas/faas-provider v0.25.12
 ## explicit; go 1.23
 github.com/openfaas/faas-provider/httputil
 # github.com/prometheus/client_golang v1.23.2
@@ -57,7 +55,7 @@ github.com/rakutentech/jwk-go/okp
 # go.yaml.in/yaml/v2 v2.4.4
 ## explicit; go 1.15
 go.yaml.in/yaml/v2
-# golang.org/x/crypto v0.49.0
+# golang.org/x/crypto v0.51.0
 ## explicit; go 1.25.0
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/curve25519
@@ -67,7 +65,7 @@ golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/nacl/box
 golang.org/x/crypto/nacl/secretbox
 golang.org/x/crypto/salsa20/salsa
-# golang.org/x/sys v0.42.0
+# golang.org/x/sys v0.44.0
 ## explicit; go 1.25.0
 golang.org/x/sys/cpu
 golang.org/x/sys/unix
