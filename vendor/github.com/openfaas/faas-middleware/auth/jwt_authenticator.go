@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,13 +13,32 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rakutentech/jwk-go/jwk"
+	"github.com/rakutentech/jwk-go/jwktypes"
 )
 
 const (
 	authorityURL      = "http://gateway.openfaas:8080/.well-known/openid-configuration"
-	localAuthorityURL = "http://127.0.0.1:8000/.well-known/openid-configuration"
+	localAuthorityURL = "http://127.0.0.1:8080/.well-known/openid-configuration"
 	functionRealm     = "IAM function invoke"
+
+	bearerScheme = "Bearer "
+
+	// authorityTimeout bounds each request made to the OpenID
+	// configuration and JWKS endpoints.
+	authorityTimeout = 10 * time.Second
+
+	maxBodyBytes = 1 << 20 // 1 MiB
 )
+
+// validSigningMethods pins the set of algorithms accepted for function tokens.
+// Only asymmetric algorithms are allowed; HS* and 'none' are rejected to
+// prevent algorithm confusion attacks.
+var validSigningMethods = []string{
+	"RS256", "RS384", "RS512",
+	"PS256", "PS384", "PS512",
+	"ES256", "ES384", "ES512",
+	"EdDSA",
+}
 
 type jwtAuth struct {
 	next http.Handler
@@ -34,6 +54,13 @@ type JWTAuthOptions struct {
 	Namespace      string
 	LocalAuthority bool
 	Debug          bool
+
+	// Authority overrides the OpenID configuration endpoint used to
+	// discover the issuer and JWKS URI. When empty, the in-cluster
+	// gateway is used, or a local gateway for LocalAuthority.
+	// Tokens are still expected to carry the OpenFaaS function claim
+	// shape and must be signed by a key in the authority's JWKS.
+	Authority string
 }
 
 func (a jwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +77,9 @@ func (a jwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var bearer string
 	if v := r.Header.Get("Authorization"); v != "" {
-		bearer = strings.TrimPrefix(v, "Bearer ")
+		if len(v) > len(bearerScheme) && strings.EqualFold(v[:len(bearerScheme)], bearerScheme) {
+			bearer = strings.TrimSpace(v[len(bearerScheme):])
+		}
 	}
 
 	if bearer == "" {
@@ -65,6 +94,7 @@ func (a jwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// since the gateway is also the issuer of function tokens and thus has the same url.
 		jwt.WithAudience(issuer),
 		jwt.WithLeeway(time.Second * 1),
+		jwt.WithValidMethods(validSigningMethods),
 	}
 
 	functionClaims := FunctionClaims{}
@@ -75,14 +105,13 @@ func (a jwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		kid, ok := token.Header["kid"].(string)
 		if !ok {
-			return nil, fmt.Errorf("invalid kid: %v", token.Header["kid"])
+			return nil, fmt.Errorf("invalid kid")
 		}
 
-		// HV: Consider caching and refreshing the keyset to handle key rotations.
 		var key *jwk.KeySpec
-		for _, k := range a.keySet.Keys {
-			if k.KeyID == kid {
-				key = &k
+		for i := range a.keySet.Keys {
+			if a.keySet.Keys[i].KeyID == kid {
+				key = &a.keySet.Keys[i]
 				break
 			}
 		}
@@ -90,16 +119,21 @@ func (a jwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if key == nil {
 			return nil, fmt.Errorf("invalid kid: %s", kid)
 		}
+
+		if err := validateKeyType(token.Method, key); err != nil {
+			return nil, err
+		}
+
 		return key.Key, nil
 	}, parseOptions...)
 	if err != nil {
-		writeUnauthorized(w, fmt.Sprintf("failed to parse JWT token: %s", err))
-		log.Printf("%s %s - %d ACCESS DENIED - (%s)", r.Method, r.URL.Path, http.StatusUnauthorized, time.Since(st).Round(time.Millisecond))
+		writeUnauthorized(w, "failed to verify JWT token")
+		log.Printf("%s %s - %d ACCESS DENIED - (%s) (%s)", r.Method, r.URL.Path, http.StatusUnauthorized, time.Since(st).Round(time.Millisecond), err.Error())
 		return
 	}
 
 	if !token.Valid {
-		writeUnauthorized(w, fmt.Sprintf("invalid JWT token: %s", bearer))
+		writeUnauthorized(w, "invalid JWT token")
 
 		log.Printf("%s %s - %d ACCESS DENIED - (%s)", r.Method, r.URL.Path, http.StatusUnauthorized, time.Since(st).Round(time.Millisecond))
 		return
@@ -120,13 +154,17 @@ func (a jwtAuth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // NewJWTAuthMiddleware creates a new middleware handler to handle authentication with OpenFaaS function
 // access tokens.
-func NewJWTAuthMiddleware(opts JWTAuthOptions, next http.Handler) (http.Handler, error) {
+func NewJWTAuthMiddleware(ctx context.Context, opts JWTAuthOptions, next http.Handler) (http.Handler, error) {
 	authority := authorityURL
-	if opts.LocalAuthority {
+	if opts.Authority != "" {
+		authority = opts.Authority
+	} else if opts.LocalAuthority {
 		authority = localAuthorityURL
 	}
 
-	config, err := getConfig(authority)
+	configCtx, cancel := context.WithTimeout(ctx, authorityTimeout)
+	config, err := getConfig(configCtx, authority)
+	cancel()
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +173,9 @@ func NewJWTAuthMiddleware(opts JWTAuthOptions, next http.Handler) (http.Handler,
 		log.Printf("[JWT Auth] Issuer: %s\tJWKS URI: %s", config.Issuer, config.JWKSURI)
 	}
 
-	keySet, err := getKeyset(config.JWKSURI)
+	keySetCtx, cancel := context.WithTimeout(ctx, authorityTimeout)
+	keySet, err := getKeyset(keySetCtx, config.JWKSURI)
+	cancel()
 	if err != nil {
 		return nil, err
 	}
@@ -154,6 +194,30 @@ func NewJWTAuthMiddleware(opts JWTAuthOptions, next http.Handler) (http.Handler,
 	}, nil
 }
 
+// validateKeyType ensures the token's signing algorithm family matches the
+// key type found in the JWKS. This prevents algorithm confusion attacks, for
+// example a token signed with HS256 when the JWKS contains an asymmetric key.
+func validateKeyType(method jwt.SigningMethod, key *jwk.KeySpec) error {
+	kty, _, _ := key.KeyType()
+
+	switch {
+	case strings.HasPrefix(method.Alg(), "RS"), strings.HasPrefix(method.Alg(), "PS"):
+		if kty == jwktypes.RSA {
+			return nil
+		}
+	case strings.HasPrefix(method.Alg(), "ES"):
+		if kty == jwktypes.EC {
+			return nil
+		}
+	case method.Alg() == "EdDSA":
+		if kty == jwktypes.OKP {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("signing method %s does not match key type %s", method.Alg(), kty)
+}
+
 // writeUnauthorized replies to the request with the specified error message and 401 HTTP code.
 // It sets the WWW-Authenticate header.
 // It does not otherwise end the request; the caller should ensure no further writes are done to w.
@@ -164,9 +228,9 @@ func writeUnauthorized(w http.ResponseWriter, err string) {
 	http.Error(w, err, http.StatusUnauthorized)
 }
 
-func getKeyset(uri string) (jwk.KeySpecSet, error) {
+func getKeyset(ctx context.Context, uri string) (jwk.KeySpecSet, error) {
 	var set jwk.KeySpecSet
-	req, err := http.NewRequest(http.MethodGet, uri, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
 	if err != nil {
 		return set, err
 	}
@@ -182,7 +246,7 @@ func getKeyset(uri string) (jwk.KeySpecSet, error) {
 
 	if res.Body != nil {
 		defer res.Body.Close()
-		body, _ = io.ReadAll(res.Body)
+		body, _ = io.ReadAll(io.LimitReader(res.Body, maxBodyBytes))
 	}
 
 	if res.StatusCode != http.StatusOK {
@@ -196,10 +260,10 @@ func getKeyset(uri string) (jwk.KeySpecSet, error) {
 	return set, nil
 }
 
-func getConfig(jwksURL string) (openIDConfiguration, error) {
+func getConfig(ctx context.Context, jwksURL string) (openIDConfiguration, error) {
 	var config openIDConfiguration
 
-	req, err := http.NewRequest(http.MethodGet, jwksURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, jwksURL, nil)
 	if err != nil {
 		return config, err
 	}
@@ -212,7 +276,7 @@ func getConfig(jwksURL string) (openIDConfiguration, error) {
 	var body []byte
 	if res.Body != nil {
 		defer res.Body.Close()
-		body, _ = io.ReadAll(res.Body)
+		body, _ = io.ReadAll(io.LimitReader(res.Body, maxBodyBytes))
 	}
 
 	if res.StatusCode != http.StatusOK {
@@ -282,8 +346,12 @@ func matchString(pattern string, value string) bool {
 }
 
 // wildCardToRegexp converts a wildcard pattern to a regular expression pattern.
+// The pattern is anchored so that only a full match of the resource reference
+// is accepted, with '*' expanding to any sequence of characters. Wildcard
+// scopes such as '*' or 'ns:fn*' are preserved.
 func wildCardToRegexp(pattern string) string {
 	var result strings.Builder
+	result.WriteString("^")
 	for i, literal := range strings.Split(pattern, "*") {
 
 		// Replace * with .*
@@ -295,5 +363,6 @@ func wildCardToRegexp(pattern string) string {
 		// literal text.
 		result.WriteString(regexp.QuoteMeta(literal))
 	}
+	result.WriteString("$")
 	return result.String()
 }

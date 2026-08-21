@@ -51,7 +51,7 @@ func (w *Watchdog) Start(ctx context.Context) error {
 	requestHandler := baseFunctionHandler
 
 	if w.config.JWTAuthentication {
-		handler, err := makeJWTAuthHandler(w.config, baseFunctionHandler)
+		handler, err := makeJWTAuthHandler(ctx, w.config, baseFunctionHandler)
 		if err != nil {
 			return fmt.Errorf("error creating JWTAuthMiddleware: %w", err)
 		}
@@ -457,7 +457,7 @@ func makeHealthHandler(lockPresent func() bool) func(http.ResponseWriter, *http.
 	}
 }
 
-func makeJWTAuthHandler(cfg config.WatchdogConfig, next http.Handler) (http.Handler, error) {
+func makeJWTAuthHandler(ctx context.Context, cfg config.WatchdogConfig, next http.Handler) (http.Handler, error) {
 	namespace, err := getFnNamespace()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get function namespace: %w", err)
@@ -474,7 +474,7 @@ func makeJWTAuthHandler(cfg config.WatchdogConfig, next http.Handler) (http.Hand
 		Debug:          cfg.JWTAuthDebug,
 	}
 
-	return auth.NewJWTAuthMiddleware(authOpts, next)
+	return auth.NewJWTAuthMiddleware(ctx, authOpts, next)
 }
 
 type WriterCounter struct {
