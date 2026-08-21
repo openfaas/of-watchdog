@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/docker/go-units v0.5.0
-	github.com/openfaas/faas-middleware v1.2.5
+	github.com/openfaas/faas-middleware v1.2.6
 	github.com/openfaas/faas-provider v0.25.12
 	github.com/prometheus/client_golang v1.24.1
 )

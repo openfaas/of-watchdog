@@ -16,8 +16,8 @@ github.com/kylelemons/godebug/diff
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
-# github.com/openfaas/faas-middleware v1.2.5
-## explicit; go 1.20
+# github.com/openfaas/faas-middleware v1.2.6
+## explicit; go 1.26.0
 github.com/openfaas/faas-middleware/auth
 github.com/openfaas/faas-middleware/concurrency-limiter
 # github.com/openfaas/faas-provider v0.25.12
