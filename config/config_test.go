@@ -389,3 +389,46 @@ func Test_NonParsableString_parseIntOrDurationValue(t *testing.T) {
 		t.Error(fmt.Sprintf("want: %q got: %q", want, got))
 	}
 }
+
+func TestNewParsesOneShot(t *testing.T) {
+	cfg, err := New([]string{
+		"fprocess=/bin/cat",
+		"mode=streaming",
+		"one_shot=true",
+	})
+	if err != nil {
+		t.Fatalf("expected config to parse, got error: %v", err)
+	}
+
+	if !cfg.OneShot {
+		t.Fatalf("expected OneShot to be true")
+	}
+}
+
+func TestNewParsesOneShotNumericValues(t *testing.T) {
+	cfg, err := New([]string{
+		"fprocess=/bin/cat",
+		"mode=streaming",
+		"one_shot=1",
+	})
+	if err != nil {
+		t.Fatalf("expected config to parse, got error: %v", err)
+	}
+
+	if !cfg.OneShot {
+		t.Fatalf("expected one_shot=1 to enable OneShot")
+	}
+
+	cfg, err = New([]string{
+		"fprocess=/bin/cat",
+		"mode=streaming",
+		"one_shot=0",
+	})
+	if err != nil {
+		t.Fatalf("expected config to parse, got error: %v", err)
+	}
+
+	if cfg.OneShot {
+		t.Fatalf("expected one_shot=0 to disable OneShot")
+	}
+}
