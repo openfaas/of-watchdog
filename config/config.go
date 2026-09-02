@@ -69,6 +69,10 @@ type WatchdogConfig struct {
 	// HTTP mode.
 	LogCallId bool
 
+	// OneShot marks the watchdog as unhealthy and begins graceful shutdown
+	// when the first genuine invoke request starts.
+	OneShot bool
+
 	// Handler is the HTTP handler to use in "inproc" mode
 	Handler http.HandlerFunc
 }
@@ -178,6 +182,7 @@ func New(env []string) (WatchdogConfig, error) {
 		LogBufferSize:       logBufferSize,
 		ReadyEndpoint:       envMap["ready_path"],
 		LogCallId:           logCallId,
+		OneShot:             getBool(envMap, "one_shot"),
 	}
 
 	if val := envMap["mode"]; len(val) > 0 {
