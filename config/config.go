@@ -65,6 +65,13 @@ type WatchdogConfig struct {
 	// local gateway running at `http://127.0.0.1:8000` instead of attempting to reach it via an in-cluster service
 	JWTAuthLocal bool
 
+	// OAuthEnabled enables OAuth/OIDC authentication for the watchdog.
+	// The provider endpoints, client credentials and cookie names are read
+	// from the oauth_* environment variables. It can be set independently
+	// of that configuration, so that authentication can be enabled or
+	// disabled quickly during development.
+	OAuthEnabled bool
+
 	// LogCallId includes a prefix of the X-Call-Id in any log statements in
 	// HTTP mode.
 	LogCallId bool
@@ -200,6 +207,7 @@ func New(env []string) (WatchdogConfig, error) {
 	c.JWTAuthentication = getBool(envMap, "jwt_auth")
 	c.JWTAuthDebug = getBool(envMap, "jwt_auth_debug")
 	c.JWTAuthLocal = getBool(envMap, "jwt_auth_local")
+	c.OAuthEnabled = getBool(envMap, "oauth_enabled")
 
 	return c, nil
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/docker/go-units"
 	"github.com/openfaas/faas-middleware/auth"
 	limiter "github.com/openfaas/faas-middleware/concurrency-limiter"
+	"github.com/openfaas/faas-middleware/oauth"
 	"github.com/openfaas/of-watchdog/config"
 	"github.com/openfaas/of-watchdog/executor"
 	"github.com/openfaas/of-watchdog/metrics"
@@ -86,6 +87,27 @@ func (w *Watchdog) Start(ctx context.Context) error {
 	}
 
 	log.Printf("Watchdog mode: %s\tfprocess: %q\n", config.WatchdogMode(w.config.OperationalMode), w.config.FunctionProcess)
+
+	if w.config.OAuthEnabled {
+		cfg, err := oauth.ReadConfig(nil)
+		if err != nil {
+			return fmt.Errorf("error reading OAuth config: %w", err)
+		}
+		client, err := oauth.NewClient(cfg, nil)
+		if err != nil {
+			return fmt.Errorf("error creating OAuth client: %w", err)
+		}
+		oauthHandler, err := oauth.NewOAuthHandler(cfg, client)
+		if err != nil {
+			return fmt.Errorf("error creating OAuth handler: %w", err)
+		}
+		requestHandler, err = oauth.NewOAuthMiddleware(cfg, requestHandler)
+		if err != nil {
+			return fmt.Errorf("error creating OAuth middleware: %w", err)
+		}
+		http.Handle("/auth/", oauthHandler)
+		log.Printf("OAuth: %v\n", w.config.OAuthEnabled)
+	}
 
 	httpMetrics := metrics.NewHttp()
 	http.HandleFunc("/", metrics.InstrumentHandler(requestHandler, httpMetrics))

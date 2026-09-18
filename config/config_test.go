@@ -390,6 +390,34 @@ func Test_NonParsableString_parseIntOrDurationValue(t *testing.T) {
 	}
 }
 
+func TestNewParsesOAuthEnabled(t *testing.T) {
+	cfg, err := New([]string{
+		"fprocess=/bin/cat",
+		"mode=streaming",
+		"oauth_enabled=true",
+	})
+	if err != nil {
+		t.Fatalf("expected config to parse, got error: %v", err)
+	}
+
+	if !cfg.OAuthEnabled {
+		t.Fatalf("expected oauth_enabled=true to enable OAuth")
+	}
+
+	cfg, err = New([]string{
+		"fprocess=/bin/cat",
+		"mode=streaming",
+		"oauth_enabled=0",
+	})
+	if err != nil {
+		t.Fatalf("expected config to parse, got error: %v", err)
+	}
+
+	if cfg.OAuthEnabled {
+		t.Fatalf("expected oauth_enabled=0 to disable OAuth")
+	}
+}
+
 func TestNewParsesOneShot(t *testing.T) {
 	cfg, err := New([]string{
 		"fprocess=/bin/cat",

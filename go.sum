@@ -24,8 +24,8 @@ github.com/onsi/ginkgo/v2 v2.22.2 h1:/3X8Panh8/WwhU/3Ssa6rCKqPLuAkVY2I0RoyDLySlU
 github.com/onsi/ginkgo/v2 v2.22.2/go.mod h1:oeMosUL+8LtarXBHu/c0bx2D/K9zyQ6uX3cTyztHwsk=
 github.com/onsi/gomega v1.36.2 h1:koNYke6TVk6ZmnyHrCXba/T/MoLBXFjeC1PtvYgw0A8=
 github.com/onsi/gomega v1.36.2/go.mod h1:DdwyADRjrc825LhMEkD76cHR5+pUnjhUN8GlHlRPHzY=
-github.com/openfaas/faas-middleware v1.2.6 h1:LHf0CsQVOqqFBTUtiQfRCRfZBP2TIwPnjxlIbNwlJz0=
-github.com/openfaas/faas-middleware v1.2.6/go.mod h1:mBtmithNeevRaZ2/g3XgxTd/NJ0s6wEq9mCyFfky4vw=
+github.com/openfaas/faas-middleware v1.2.7 h1:TbdMw7XEPY1oSfdKLIW+V56P/svZuXVdQu/lnJ3Oymo=
+github.com/openfaas/faas-middleware v1.2.7/go.mod h1:mBtmithNeevRaZ2/g3XgxTd/NJ0s6wEq9mCyFfky4vw=
 github.com/openfaas/faas-provider v0.25.12 h1:1LsYf0jADlLjml+couJpdBz3ioBfq1iOAaERbKNZ8SM=
 github.com/openfaas/faas-provider v0.25.12/go.mod h1:rMXbj+AYVpn82UoHIOgWHiDeV118t0bSxyoC9d00jpc=
 github.com/prometheus/client_golang v1.24.1 h1:JnJkREXzWxUdCuPFpIWZiPispT9xVV59uiuyR2bPlnU=
