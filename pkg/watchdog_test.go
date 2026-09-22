@@ -1,6 +1,8 @@
 package pkg
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -10,8 +12,73 @@ import (
 	"time"
 
 	"github.com/openfaas/faas-middleware/oauth"
+	"github.com/openfaas/of-watchdog/config"
 	"github.com/openfaas/of-watchdog/executor"
 )
+
+func TestJWTAuthIssuerOverride(t *testing.T) {
+	t.Setenv("OPENFAAS_NAME", "test-function")
+	t.Setenv("OPENFAAS_NAMESPACE", "openfaas-fn")
+
+	for _, local := range []bool{false, true} {
+		for _, tc := range []struct {
+			name          string
+			issuerPath    string
+			discoveryPath string
+		}{
+			{"root", "", "/.well-known/openid-configuration"},
+			{"trailing-slash", "/", "/.well-known/openid-configuration"},
+			{"base-path", "/tenant", "/tenant/.well-known/openid-configuration"},
+			{"base-path-trailing-slash", "/tenant/", "/tenant/.well-known/openid-configuration"},
+		} {
+			t.Run(fmt.Sprintf("local=%t/%s", local, tc.name), func(t *testing.T) {
+				var discoveryCalls, keyCalls atomic.Int32
+				keys := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					keyCalls.Add(1)
+					w.Header().Set("Content-Type", "application/json")
+					fmt.Fprint(w, `{"keys":[]}`)
+				}))
+				defer keys.Close()
+
+				discovery := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path != tc.discoveryPath {
+						http.NotFound(w, r)
+						return
+					}
+					discoveryCalls.Add(1)
+					w.Header().Set("Content-Type", "application/json")
+					fmt.Fprintf(w, `{"issuer":"https://gateway.example.com","jwks_uri":%q}`, keys.URL)
+				}))
+				defer discovery.Close()
+
+				cfg, err := config.New([]string{
+					"fprocess=echo test",
+					"jwt_auth=true",
+					fmt.Sprintf("jwt_auth_local=%t", local),
+					"jwt_auth_issuer=" + discovery.URL + tc.issuerPath,
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				handler, err := makeJWTAuthHandler(context.Background(), cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					t.Error("unauthenticated request reached the function")
+				}))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if discoveryCalls.Load() != 1 || keyCalls.Load() != 1 {
+					t.Fatalf("expected discovery and separate JWKS endpoint to be fetched once, got %d and %d", discoveryCalls.Load(), keyCalls.Load())
+				}
+
+				res := httptest.NewRecorder()
+				handler.ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/", nil))
+				if res.Code != http.StatusUnauthorized {
+					t.Fatalf("expected HTTP 401 without a token, got %d", res.Code)
+				}
+			})
+		}
+	}
+}
 
 func TestMakeOneShotHandlerDrainsAndRejectsSubsequentRequests(t *testing.T) {
 	var calls int32
