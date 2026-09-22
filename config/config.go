@@ -72,6 +72,10 @@ type WatchdogConfig struct {
 	// disabled quickly during development.
 	OAuthEnabled bool
 
+	// JWTAuthIssuer overrides the issuer base URL used for function authentication
+	// discovery. When set, it takes precedence over JWTAuthLocal.
+	JWTAuthIssuer string
+
 	// LogCallId includes a prefix of the X-Call-Id in any log statements in
 	// HTTP mode.
 	LogCallId bool
@@ -208,6 +212,7 @@ func New(env []string) (WatchdogConfig, error) {
 	c.JWTAuthDebug = getBool(envMap, "jwt_auth_debug")
 	c.JWTAuthLocal = getBool(envMap, "jwt_auth_local")
 	c.OAuthEnabled = getBool(envMap, "oauth_enabled")
+	c.JWTAuthIssuer = envMap["jwt_auth_issuer"]
 
 	return c, nil
 }

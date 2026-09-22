@@ -551,11 +551,17 @@ func makeJWTAuthHandler(ctx context.Context, cfg config.WatchdogConfig, next htt
 		return nil, fmt.Errorf("failed to get function name: %w", err)
 	}
 
+	var authority string
+	if cfg.JWTAuthIssuer != "" {
+		authority = strings.TrimRight(cfg.JWTAuthIssuer, "/") + "/.well-known/openid-configuration"
+	}
+
 	authOpts := auth.JWTAuthOptions{
 		Name:           name,
 		Namespace:      namespace,
 		LocalAuthority: cfg.JWTAuthLocal,
 		Debug:          cfg.JWTAuthDebug,
+		Authority:      authority,
 	}
 
 	return auth.NewJWTAuthMiddleware(ctx, authOpts, next)

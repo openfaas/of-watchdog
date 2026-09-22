@@ -418,6 +418,37 @@ func TestNewParsesOAuthEnabled(t *testing.T) {
 	}
 }
 
+func TestNewParsesJWTAuthIssuer(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		env  []string
+		want string
+	}{
+		{name: "unset"},
+		{name: "empty", env: []string{"jwt_auth_issuer="}},
+		{
+			name: "configured",
+			env:  []string{"jwt_auth_issuer=https://gateway.example.com"},
+			want: "https://gateway.example.com",
+		},
+		{
+			name: "base-path-trailing-slash",
+			env:  []string{"jwt_auth_issuer=https://gateway.example.com/tenant/"},
+			want: "https://gateway.example.com/tenant/",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := New(append([]string{"fprocess=/bin/cat"}, tc.env...))
+			if err != nil {
+				t.Fatalf("expected config to parse, got error: %v", err)
+			}
+			if cfg.JWTAuthIssuer != tc.want {
+				t.Fatalf("expected JWTAuthIssuer %q, got %q", tc.want, cfg.JWTAuthIssuer)
+			}
+		})
+	}
+}
+
 func TestNewParsesOneShot(t *testing.T) {
 	cfg, err := New([]string{
 		"fprocess=/bin/cat",
