@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"strings"
@@ -23,8 +25,8 @@ type loginSession struct {
 	Verifier string `json:"code_verifier"`
 }
 
-// OAuthHandler serves the OAuth authorization-code flow routes:
-// /auth/login, /auth/callback and /auth/logout.
+// OAuthHandler serves the OAuth authorization-code flow routes: the login page
+// at /auth/login, plus /auth/callback and /auth/logout.
 type OAuthHandler struct {
 	sessionCookie     string
 	loginCookie       string
@@ -39,11 +41,8 @@ type OAuthHandler struct {
 	// loginRedirect is where the browser is sent after a successful login.
 	loginRedirect string
 
-	// logoutRedirect is where the browser is sent after logout.
-	logoutRedirect string
-
-	// errorRedirect is an optional destination for login and callback failures.
-	errorRedirect string
+	// loginURL is the public login page for unauthenticated visitors.
+	loginURL string
 }
 
 // NewOAuthHandler builds an OAuthHandler from the configuration and the given
@@ -68,8 +67,7 @@ func NewOAuthHandler(cfg Config, client AuthorizationClient) (*OAuthHandler, err
 		secure:            cfg.BaseURL.Scheme == "https",
 		client:            client,
 		loginRedirect:     cfg.LoginRedirect,
-		logoutRedirect:    cfg.LogoutRedirect,
-		errorRedirect:     cfg.ErrorRedirect,
+		loginURL:          cfg.BaseURL.JoinPath("/auth/login").String(),
 	}
 	if h.sessionDefaultTTL == 0 {
 		h.sessionDefaultTTL = time.Hour
@@ -79,9 +77,6 @@ func NewOAuthHandler(cfg Config, client AuthorizationClient) (*OAuthHandler, err
 	}
 	if h.loginRedirect == "" {
 		h.loginRedirect = cfg.BaseURL.String()
-	}
-	if h.logoutRedirect == "" {
-		h.logoutRedirect = cfg.BaseURL.JoinPath("/auth/login").String()
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth/login", h.login)
@@ -96,11 +91,35 @@ func (h *OAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
 
-// login starts the authorization-code flow. It stores the OAuth state in a
-// cookie together with the PKCE verifier and redirects the browser to the provider.
+// login serves /auth/login: the login page on GET/HEAD, the flow start on POST.
 func (h *OAuthHandler) login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", "GET")
+	switch r.Method {
+	case http.MethodGet, http.MethodHead:
+		h.loginPage(w, r)
+	case http.MethodPost:
+		h.startLogin(w, r)
+	default:
+		w.Header().Set("Allow", "GET, HEAD, POST")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// loginPage renders the built-in login page. Visiting it never contacts the
+// provider; the button POSTs to start the flow.
+func (h *OAuthHandler) loginPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	if r.Method == http.MethodHead {
+		return
+	}
+	_ = authPage.Execute(w, h.loginURL)
+}
+
+// startLogin sets the OAuth state and PKCE verifier cookie, then redirects to
+// the provider.
+func (h *OAuthHandler) startLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -198,7 +217,7 @@ func (h *OAuthHandler) logout(w http.ResponseWriter, r *http.Request) {
 	h.clearCookie(w, h.sessionCookie)
 	h.clearCookie(w, h.loginCookie)
 
-	http.Redirect(w, r, h.logoutRedirect, http.StatusSeeOther)
+	http.Redirect(w, r, h.loginURL, http.StatusSeeOther)
 }
 
 // setCookie writes an HttpOnly cookie with the same expiry as its JWT.
@@ -231,13 +250,105 @@ func (h *OAuthHandler) readCookie(r *http.Request, name string) string {
 	return cookie.Value
 }
 
-// loginError logs a request failure once, then sends a generic response or redirect.
+// loginError logs a request failure once, then sends a generic built-in page.
 func (h *OAuthHandler) loginError(w http.ResponseWriter, r *http.Request, message string, status int, err error) {
 	log.Printf("OAuth login failed: status=%d reason=%q error=%q\n", status, message, err)
-	if h.errorRedirect != "" {
-		w.Header().Set("Cache-Control", "no-store")
-		http.Redirect(w, r, h.errorRedirect, http.StatusSeeOther)
-		return
-	}
-	http.Error(w, message, status)
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	_ = authErrorPage.Execute(w, loginErrorData{
+		Message:  message,
+		LoginURL: h.loginURL,
+	})
 }
+
+type loginErrorData struct {
+	Message  string
+	LoginURL string
+}
+
+// authPageStyles is shared by the login and error pages.
+const authPageStyles = `<style>
+:root{color-scheme:light;--bg:#f9f9f9;--card:#fff;--text:#333;--text-2:#66717d;--accent:#3b5ee3}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{min-height:100vh;min-height:100svh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:16px;line-height:1.5}
+.auth-page{width:100%;max-width:448px;text-align:center}
+.card{border-radius:8px;background:var(--card);box-shadow:0 4px 6px -1px #0000001a,0 2px 4px -2px #0000001a}
+.card-header{padding:24px;border-bottom:1px solid #dce0e5}
+.logo{display:block;width:56px;height:56px;margin:0 auto 16px}
+h1{margin:0;font-size:24px;font-weight:700;line-height:1.333333}
+.card-body{padding:24px}
+.message{margin-bottom:24px;color:var(--text-2);overflow-wrap:anywhere}
+p{margin:0}
+p+p{margin-top:8px}
+form{margin:0}
+button,a.btn{display:block;width:100%;padding:8px 16px;border:0;border-radius:4px;background:var(--accent);color:#fff;cursor:pointer;font:inherit;font-weight:600;line-height:1.5;text-decoration:none}
+button:hover,a.btn:hover{background:#3051d3}
+button:focus-visible,a.btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+footer{margin-top:16px;color:#78818b;font-size:14px;text-align:center}
+</style>`
+
+const authPageFooter = `<footer>Powered by OpenFaaS</footer>`
+
+// Official OpenFaaS logo, embedded so the pages need no external assets.
+//
+//go:embed assets/openfaas.png
+var authPageLogoPNG []byte
+
+var authPageLogo = `<img class="logo" src="data:image/png;base64,` + base64.StdEncoding.EncodeToString(authPageLogoPNG) + `" width="56" height="56" alt="OpenFaaS">`
+
+var authPage = template.Must(template.New("login").Parse(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Authentication Required</title>
+` + authPageStyles + `
+</head>
+<body>
+<main class="auth-page">
+<section class="card" aria-labelledby="heading">
+<header class="card-header">
+` + authPageLogo + `
+<h1 id="heading">Authentication Required</h1>
+</header>
+<div class="card-body">
+<div class="message">
+<p>This is a protected resource.</p>
+<p>Only authenticated users may continue.</p>
+</div>
+<form method="post" action="{{.}}"><button type="submit">Sign in</button></form>
+</div>
+</section>
+` + authPageFooter + `
+</main>
+</body>
+</html>
+`))
+
+var authErrorPage = template.Must(template.New("loginError").Parse(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in failed</title>
+` + authPageStyles + `
+</head>
+<body>
+<main class="auth-page">
+<section class="card" aria-labelledby="heading">
+<header class="card-header">
+` + authPageLogo + `
+<h1 id="heading">Sign in failed</h1>
+</header>
+<div class="card-body">
+<div class="message"><p>{{.Message}}</p></div>
+<a class="btn" href="{{.LoginURL}}">Try again</a>
+</div>
+</section>
+` + authPageFooter + `
+</main>
+</body>
+</html>
+`))
