@@ -187,23 +187,38 @@ func TestOAuthSessionThroughHTTPRunner(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Exercise the HTTP runner's ordinary and streaming proxy branches.
+	loginURL := cfg.BaseURL.JoinPath("/auth/login").String()
 	for _, accept := range []string{"application/json", "text/event-stream"} {
-		for _, valid := range []bool{true, false} {
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			req.Header.Set("Accept", accept)
-			value, want := session, http.StatusNoContent
-			if !valid {
-				value, want = "tampered", http.StatusUnauthorized
-			}
-			req.AddCookie(&http.Cookie{Name: cfg.CookieName, Value: value})
-			res := httptest.NewRecorder()
-			handler.ServeHTTP(res, req)
-			if res.Code != want {
-				t.Fatalf("accept=%s valid=%v: got %d, want %d", accept, valid, res.Code, want)
-			}
-			if len(res.Result().Cookies()) != 0 {
-				t.Fatal("proxy rewrote the browser cookie")
-			}
+		for _, tc := range []struct {
+			name  string
+			value string
+			add   bool
+			want  int
+		}{
+			{name: "valid", value: session, add: true, want: http.StatusNoContent},
+			{name: "tampered", value: "tampered", add: true, want: http.StatusSeeOther},
+			{name: "missing", add: false, want: http.StatusSeeOther},
+		} {
+			t.Run(accept+"/"+tc.name, func(t *testing.T) {
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
+				req.Header.Set("Accept", accept)
+				if tc.add {
+					req.AddCookie(&http.Cookie{Name: cfg.CookieName, Value: tc.value})
+				}
+				res := httptest.NewRecorder()
+				handler.ServeHTTP(res, req)
+				if res.Code != tc.want {
+					t.Fatalf("got %d, want %d", res.Code, tc.want)
+				}
+				if len(res.Result().Cookies()) != 0 {
+					t.Fatal("proxy rewrote the browser cookie")
+				}
+				if tc.want == http.StatusSeeOther {
+					if location := res.Header().Get("Location"); location != loginURL {
+						t.Fatalf("redirect to %q, want %q", location, loginURL)
+					}
+				}
+			})
 		}
 	}
 	if calls.Load() != 2 {

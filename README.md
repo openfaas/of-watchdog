@@ -227,25 +227,25 @@ Unsupported options from the [Classic Watchdog](https://github.com/openfaas/clas
 
 ## OAuth and OpenID Connect
 
-The watchdog can add browser login to a function using an OAuth 2.0 or OpenID Connect (OIDC) provider. It runs the Authorization Code flow with PKCE on your function's behalf, keeps the resulting session in a signed cookie, and validates that cookie before forwarding each request. Your function never has to implement authentication itself: it reads the verified session cookie to identify the user.
+The watchdog can add browser login to a function using an OAuth 2.0 or OpenID Connect (OIDC) provider. It runs the Authorization Code flow with PKCE on your function's behalf, keeps the resulting session in a signed cookie, and validates that cookie before forwarding each request. Your function never has to implement authentication itself: it can reads the verified session cookie to identify the user.
 
 On every request the watchdog checks for a valid session cookie:
 
-* No cookie - the request is forwarded to the function unchanged, so public pages work without signing in.
+* No cookie - the request is redirected to the login page at `{oauth_base_url}/auth/login`.
 * Valid cookie - the request is forwarded with the cookie intact, so the function can decode it to read the user's ID and access tokens.
-* Invalid or expired cookie - the request is rejected with HTTP 401.
+* Invalid or expired cookie - the request is redirected to the login page.
 
-The function's frontend starts the flow by sending the visitor to the watchdog's `GET /auth/login` endpoint, for example from a "Sign in" link. The watchdog then runs the authorization-code exchange with the provider itself, and on success sets the signed session cookie and sends the visitor back to the function.
 
 The watchdog serves the following routes under the function's public URL:
 
-* `GET /auth/login` - start the login flow and redirect the browser to the provider
-* `GET /auth/callback` - handle the provider's redirect and set the session cookie
-* `POST /auth/logout` - clear the session cookie
+* `GET /auth/login` - serves the login page
+* `POST /auth/login` - starts the login flow and redirect the browser to the auth provider authorization url.
+* `GET /auth/callback` - handles the provider's redirect and set the session cookie
+* `POST /auth/logout` - clears the session cookie and redirects to the login page
 
 Register `{oauth_base_url}/auth/callback` as the callback (redirect) URI on your provider and client.
 
-Session cookies are HttpOnly and signed. Logout only clears the function's cookies; it does not end the visitor's session at the provider.
+Session cookies are HttpOnly and signed. Logout clears the function's cookies and sends the visitor back to the login page; it does not end the visitor's session at the provider.
 
 ### Required configuration
 
@@ -267,16 +267,14 @@ You then point the watchdog at your provider in one of two ways:
 
 | Option | Usage |
 | ------ | ----- |
-| `oauth_client_secret` | Name of a secret under `/var/openfaas/secrets` containing the client secret. Omit for public clients without a secret. Inline secrets and full paths are not supported. PKCE is used with or without a client secret. |
-| `oauth_token_auth_method` | Client-secret authentication method: `client_secret_basic` (default) or `client_secret_post`. Unused without a client secret. |
+| `oauth_client_secret` | Name of a secret under `/var/openfaas/secrets` containing the client secret. Omit for public clients without a secret that support PKCE. |
 | `oauth_scopes` | Space- or comma-separated scopes. Default: `openid`. OIDC always includes `openid`. |
 | `oauth_cookie_name` | Session cookie name. Default: `of_session`. Must be a valid cookie name and differ from the login cookie name. |
 | `oauth_login_cookie_name` | Temporary login cookie name. Default: `of_login`. Must be a valid cookie name and differ from the session cookie name. |
 | `oauth_login_redirect` | Destination after successful login. Defaults to `oauth_base_url`. |
-| `oauth_logout_redirect` | Destination after logout. Defaults to `<oauth_base_url>/auth/login`. |
-| `oauth_error_redirect` | Optional destination for login failures. When unset, the watchdog returns an HTTP error. |
 | `oauth_session_default_ttl` | Session lifetime when the provider supplies no expiry. Default: `1h`. |
 | `oauth_session_ttl` | Optional override for the session JWT and cookie lifetime, even beyond provider token expiry. Does not refresh or extend the embedded token's validity. When unset, the ID token expiry, OAuth `expires_in`, or the default lifetime is used. |
 | `oauth_allow_http` | Allow HTTP provider endpoints, discovery and redirects for development. Default: `false` (HTTPS required). |
+| `oauth_token_auth_method` | Client-secret authentication method: `client_secret_basic` (default) or `client_secret_post`. Unused without a client secret. |
 
 Session lifetimes use positive Golang durations in whole seconds, e.g. `30m` or `8h`.
