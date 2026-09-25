@@ -6,10 +6,9 @@ import (
 	"strings"
 )
 
-// NewOAuthMiddleware verifies signed JWT session cookies before they
-// reach the function. Requests without a session cookie pass through so the
-// upstream can serve public pages. Invalid, expired or duplicate session cookies
-// return 401. Valid requests, including their signed cookies, pass through unchanged.
+// NewOAuthMiddleware verifies the signed session cookie on every request and
+// redirects missing or invalid ones to the login page, so no public pages are
+// served when auth is enabled. Valid requests pass through unchanged.
 func NewOAuthMiddleware(cfg Config, next http.Handler) (http.Handler, error) {
 	if cfg.CookieName == "" {
 		return nil, errors.New("session cookie name is required")
@@ -32,18 +31,35 @@ func NewOAuthMiddleware(cfg Config, next http.Handler) (http.Handler, error) {
 			}
 		}
 		if count == 0 {
-			next.ServeHTTP(w, r)
+			redirectToLogin(w, r, cfg)
 			return
 		}
 
 		supplied := r.CookiesNamed(cfg.CookieName)
 		if count != 1 || len(supplied) != 1 {
-			rejectSession(w)
+			if count > 1 {
+				// A stale root-path cookie can coexist with the function's cookie.
+				// Expire both before login, otherwise the callback only replaces the
+				// function cookie and the browser remains in a redirect loop.
+				// Cookie headers do not reveal paths or domains; only clear these
+				// known host-only scopes, leaving other functions' paths alone.
+				paths := []string{"/"}
+				if path := strings.TrimRight(cfg.BaseURL.EscapedPath(), "/"); path != "" {
+					paths = append(paths, path)
+				}
+				for _, path := range paths {
+					http.SetCookie(w, &http.Cookie{
+						Name: cfg.CookieName, Value: "", Path: path, HttpOnly: true,
+						Secure: cfg.BaseURL.Scheme == "https", SameSite: http.SameSiteLaxMode, MaxAge: -1,
+					})
+				}
+			}
+			redirectToLogin(w, r, cfg)
 			return
 		}
 		var token Token
 		if err := cookies.Decode(cfg.CookieName, supplied[0].Value, &token); err != nil || (token.IDToken == "" && token.AccessToken == "") {
-			rejectSession(w)
+			redirectToLogin(w, r, cfg)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -55,7 +71,8 @@ func cookiePartName(part string) string {
 	return strings.TrimSpace(name)
 }
 
-func rejectSession(w http.ResponseWriter) {
+// redirectToLogin redirects to the login page.
+func redirectToLogin(w http.ResponseWriter, r *http.Request, cfg Config) {
 	w.Header().Set("Cache-Control", "no-store")
-	http.Error(w, "Invalid or expired session. Sign in again.", http.StatusUnauthorized)
+	http.Redirect(w, r, cfg.BaseURL.JoinPath("/auth/login").String(), http.StatusSeeOther)
 }

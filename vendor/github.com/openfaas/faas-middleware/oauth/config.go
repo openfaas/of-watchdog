@@ -79,14 +79,6 @@ type Config struct {
 	// LoginRedirect is where the browser is sent after a successful login.
 	// Defaults to BaseURL.
 	LoginRedirect string
-
-	// LogoutRedirect is where the browser is sent after logout. Defaults to
-	// BaseURL + "/auth/login".
-	LogoutRedirect string
-
-	// ErrorRedirect is an optional destination for login and callback failures.
-	// When empty, failures return an HTTP error response.
-	ErrorRedirect string
 }
 
 // ReadConfig builds a Config from defaults, environment variables and mounted
@@ -161,8 +153,6 @@ func ReadConfig(readFile func(string) ([]byte, error)) (Config, error) {
 		return Config{}, err
 	}
 	cfg.LoginRedirect = os.Getenv("oauth_login_redirect")
-	cfg.LogoutRedirect = os.Getenv("oauth_logout_redirect")
-	cfg.ErrorRedirect = os.Getenv("oauth_error_redirect")
 
 	if readFile == nil {
 		readFile = os.ReadFile
