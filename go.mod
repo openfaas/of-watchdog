@@ -9,6 +9,10 @@ require (
 	github.com/prometheus/client_golang v1.24.1
 )
 
+// TEMP: build and test against the local faas-middleware branch until it is
+// released. Remove once the OAuth session enforcement is merged and tagged.
+replace github.com/openfaas/faas-middleware => ../faas-middleware
+
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
