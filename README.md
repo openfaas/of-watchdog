@@ -231,6 +231,8 @@ The watchdog can add browser login to a function using an OAuth 2.0 or OpenID Co
 
 The provider's access and ID tokens are discarded once login completes and are never stored in the cookie. When the provider returns an ID token, the session keeps only federated identity claims, as with OpenFaaS IAM: `sub` prefixed with `fed:`, the provider's issuer as `fed:iss`, and `email` and `name` when present. With plain OAuth, the session only records that the user signed in.
 
+When upgrading from a release that stored provider tokens in `of_session`, rotate `oauth_signing_key` to invalidate existing cookies immediately. Otherwise, previously issued cookies remain valid until they expire.
+
 On every request the watchdog checks for a valid session cookie:
 
 * No cookie - the request is redirected to the login page at `{oauth_base_url}/auth/login`.
