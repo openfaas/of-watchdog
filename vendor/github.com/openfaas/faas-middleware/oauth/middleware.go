@@ -57,8 +57,8 @@ func NewOAuthMiddleware(cfg Config, next http.Handler) (http.Handler, error) {
 			redirectToLogin(w, r, cfg)
 			return
 		}
-		var token Token
-		if err := cookies.Decode(cfg.CookieName, supplied[0].Value, &token); err != nil || (token.IDToken == "" && token.AccessToken == "") {
+		var session Session
+		if err := cookies.Decode(cfg.CookieName, supplied[0].Value, &session); err != nil {
 			redirectToLogin(w, r, cfg)
 			return
 		}

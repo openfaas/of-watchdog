@@ -227,12 +227,14 @@ Unsupported options from the [Classic Watchdog](https://github.com/openfaas/clas
 
 ## OAuth and OpenID Connect
 
-The watchdog can add browser login to a function using an OAuth 2.0 or OpenID Connect (OIDC) provider. It runs the Authorization Code flow with PKCE on your function's behalf, keeps the resulting session in a signed cookie, and validates that cookie before forwarding each request. Your function never has to implement authentication itself: it can read the verified session cookie to identify the user.
+The watchdog can add browser login to a function using an OAuth 2.0 or OpenID Connect (OIDC) provider. It runs the Authorization Code flow with PKCE on your function's behalf, keeps the resulting session in a signed cookie, and validates that cookie before forwarding each request. Your function never has to implement authentication itself.
+
+The provider's access and ID tokens are discarded once login completes and are never stored in the cookie. When the provider returns an ID token, the session keeps only federated identity claims, as with OpenFaaS IAM: `sub` prefixed with `fed:`, the provider's issuer as `fed:iss`, and `email` and `name` when present. With plain OAuth, the session only records that the user signed in.
 
 On every request the watchdog checks for a valid session cookie:
 
 * No cookie - the request is redirected to the login page at `{oauth_base_url}/auth/login`.
-* Valid cookie - the request is forwarded with the cookie intact, so the function can decode it to read the user's ID and access tokens.
+* Valid cookie - the request is forwarded to the function.
 * Invalid or expired cookie - the request is redirected to the login page.
 
 
@@ -273,7 +275,7 @@ You then point the watchdog at your provider in one of two ways:
 | `oauth_login_cookie_name` | Temporary login cookie name. Default: `of_login`. Must be a valid cookie name and differ from the session cookie name. |
 | `oauth_login_redirect` | Destination after successful login. Defaults to `oauth_base_url`. |
 | `oauth_session_default_ttl` | Session lifetime when the provider supplies no expiry. Default: `1h`. |
-| `oauth_session_ttl` | Optional override for the session JWT and cookie lifetime, even beyond provider token expiry. Does not refresh or extend the embedded token's validity. When unset, the ID token expiry, OAuth `expires_in`, or the default lifetime is used. |
+| `oauth_session_ttl` | Optional override for the session JWT and cookie lifetime, even beyond provider token expiry. The provider is not contacted again during the session. When unset, the ID token expiry, OAuth `expires_in`, or the default lifetime is used. |
 | `oauth_allow_http` | Allow HTTP provider endpoints, discovery and redirects for development. Default: `false` (HTTPS required). |
 | `oauth_token_auth_method` | Client-secret authentication method: `client_secret_basic` (default) or `client_secret_post`. Unused without a client secret. |
 
