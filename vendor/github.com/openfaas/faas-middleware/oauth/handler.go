@@ -195,8 +195,13 @@ func (h *OAuthHandler) callback(w http.ResponseWriter, r *http.Request) {
 		h.loginError(w, r, "identity verification failed; sign in again", http.StatusUnauthorized, err)
 		return
 	}
-	// Preserve the provider's tokens inside a signed JWT cookie.
-	value, err := h.cookies.Encode(h.sessionCookie, token, expires)
+	identity, err := newSession(token)
+	if err != nil {
+		h.loginError(w, r, "identity verification failed; sign in again", http.StatusUnauthorized, err)
+		return
+	}
+	// Provider tokens are not kept; the cookie only holds identity claims.
+	value, err := h.cookies.Encode(h.sessionCookie, identity, expires)
 	if err != nil {
 		h.loginError(w, r, "session creation failed", http.StatusInternalServerError, err)
 		return

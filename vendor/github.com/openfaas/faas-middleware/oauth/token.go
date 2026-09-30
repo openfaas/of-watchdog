@@ -21,6 +21,39 @@ func parseJWT(raw string) (jwt.MapClaims, error) {
 	return claims, nil
 }
 
+// Session is the only state kept in the session cookie. Provider tokens are
+// discarded once login completes. When an ID token is available, its identity
+// is kept as federated claims, following the OpenFaaS IAM token exchange:
+// "fed:" prefixes the subject and "fed:iss" records the provider. Only the
+// email and name claims are inherited. Plain OAuth sessions only record that
+// login succeeded.
+type Session struct {
+	Subject         string `json:"sub,omitempty"`
+	FederatedIssuer string `json:"fed:iss,omitempty"`
+	Email           string `json:"email,omitempty"`
+	Name            string `json:"name,omitempty"`
+}
+
+// newSession copies identity claims from the ID token, never the tokens.
+func newSession(token Token) (Session, error) {
+	if token.IDToken == "" {
+		return Session{}, nil
+	}
+	claims, err := parseJWT(token.IDToken)
+	if err != nil {
+		return Session{}, err
+	}
+	subject, _ := claims.GetSubject()
+	issuer, _ := claims.GetIssuer()
+	session := Session{
+		Subject:         "fed:" + subject,
+		FederatedIssuer: issuer,
+	}
+	session.Email, _ = claims["email"].(string)
+	session.Name, _ = claims["name"].(string)
+	return session, nil
+}
+
 // sessionExpiry chooses one timestamp for the wrapper JWT and browser cookie.
 func (h *OAuthHandler) sessionExpiry(token Token, now time.Time) (time.Time, error) {
 	expires := now.Add(h.sessionDefaultTTL)
@@ -44,8 +77,8 @@ func (h *OAuthHandler) sessionExpiry(token Token, now time.Time) (time.Time, err
 	if h.sessionTTL > 0 {
 		// Explicit operator opt-in: keep users signed in to this function even
 		// when the provider issues short-lived tokens. After login, the signed
-		// wrapper's expiry governs function access; the embedded token is not
-		// refreshed or revalidated on each request and may expire independently.
+		// wrapper's expiry governs function access; the provider is not
+		// contacted again and its tokens may expire independently.
 		// This is deliberately an override, not min(provider expiry, TTL).
 		// Without the override, the provider expiry selected above is retained.
 		expires = now.Add(h.sessionTTL)
