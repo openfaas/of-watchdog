@@ -21,40 +21,72 @@ func parseJWT(raw string) (jwt.MapClaims, error) {
 	return claims, nil
 }
 
-// Session is the only state kept in the session cookie. Provider tokens are
-// discarded once login completes. When an ID token is available, its identity
-// is kept as federated claims, following the OpenFaaS IAM token exchange:
-// "fed:" prefixes the subject and "fed:iss" records the provider. Only the
-// email and name claims are inherited. Plain OAuth sessions only record that
-// login succeeded.
-type Session struct {
-	Subject         string `json:"sub,omitempty"`
-	FederatedIssuer string `json:"fed:iss,omitempty"`
-	Email           string `json:"email,omitempty"`
-	Name            string `json:"name,omitempty"`
+const sessionTokenType = "session"
+
+// sessionClaims are the only state kept in the session cookie. Provider tokens
+// are discarded once login completes. Imported provider claims use the fed:
+// namespace; the standard subject remains compatible with OpenFaaS IAM.
+type sessionClaims struct {
+	jwt.RegisteredClaims
+
+	Type            string   `json:"typ"`
+	FederatedIssuer string   `json:"fed:iss,omitempty"`
+	FederatedEmail  string   `json:"fed:email,omitempty"`
+	EmailVerified   *bool    `json:"fed:email_verified,omitempty"`
+	FederatedName   string   `json:"fed:name,omitempty"`
+	FederatedGroups []string `json:"fed:groups,omitempty"`
+	GroupsTruncated bool     `json:"fed:groups_truncated,omitempty"`
 }
 
+func (s *sessionClaims) tokenType() string { return s.Type }
+
 // newSession copies identity claims from the ID token, never the tokens.
-func newSession(token Token) (Session, error) {
+func newSession(token Token) (sessionClaims, error) {
 	if token.IDToken == "" {
-		return Session{}, nil
+		return sessionClaims{Type: sessionTokenType}, nil
 	}
 	claims, err := parseJWT(token.IDToken)
 	if err != nil {
-		return Session{}, err
+		return sessionClaims{}, err
 	}
 	subject, _ := claims.GetSubject()
 	issuer, _ := claims.GetIssuer()
-	session := Session{
-		Subject:         "fed:" + subject,
+	session := sessionClaims{
+		Type:            sessionTokenType,
 		FederatedIssuer: issuer,
 	}
-	session.Email, _ = claims["email"].(string)
-	session.Name, _ = claims["name"].(string)
+	session.Subject = "fed:" + subject
+	session.FederatedEmail, _ = claims["email"].(string)
+	session.FederatedName, _ = claims["name"].(string)
+	if verified, ok := claims["email_verified"].(bool); ok {
+		session.EmailVerified = &verified
+	}
+	session.FederatedGroups, session.GroupsTruncated = stringClaimValues(claims["groups"])
 	return session, nil
 }
 
-// sessionExpiry chooses one timestamp for the wrapper JWT and browser cookie.
+func stringClaimValues(value any) ([]string, bool) {
+	var values []string
+	truncated := false
+	switch groups := value.(type) {
+	case nil:
+	case []string:
+		values = append(values, groups...)
+	case []any:
+		for _, value := range groups {
+			if group, ok := value.(string); ok {
+				values = append(values, group)
+			} else {
+				truncated = true
+			}
+		}
+	default:
+		truncated = true
+	}
+	return values, truncated
+}
+
+// sessionExpiry chooses one timestamp for the session JWT and browser cookie.
 func (h *OAuthHandler) sessionExpiry(token Token, now time.Time) (time.Time, error) {
 	expires := now.Add(h.sessionDefaultTTL)
 	if token.IDToken != "" {

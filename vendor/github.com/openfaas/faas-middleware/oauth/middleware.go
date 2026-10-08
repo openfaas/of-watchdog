@@ -13,7 +13,7 @@ func NewOAuthMiddleware(cfg Config, next http.Handler) (http.Handler, error) {
 	if cfg.CookieName == "" {
 		return nil, errors.New("session cookie name is required")
 	}
-	cookies, err := NewCookieCodec(cfg.CookieSecret, cfg.BaseURL.String())
+	tokens, err := newCookieCodec(cfg.CookieSecret, cfg.BaseURL.String())
 	if err != nil {
 		return nil, err
 	}
@@ -57,13 +57,30 @@ func NewOAuthMiddleware(cfg Config, next http.Handler) (http.Handler, error) {
 			redirectToLogin(w, r, cfg)
 			return
 		}
-		var session Session
-		if err := cookies.Decode(cfg.CookieName, supplied[0].Value, &session); err != nil {
+		var session sessionClaims
+		if err := tokens.decode(supplied[0].Value, &session, sessionTokenType); err != nil {
 			redirectToLogin(w, r, cfg)
 			return
 		}
 		next.ServeHTTP(w, r)
 	}), nil
+}
+
+// readSingleCookie rejects missing, malformed and duplicate named cookies.
+func readSingleCookie(r *http.Request, name string) (string, error) {
+	count := 0
+	for _, header := range r.Header.Values("Cookie") {
+		for _, part := range strings.Split(header, ";") {
+			if cookiePartName(part) == name {
+				count++
+			}
+		}
+	}
+	cookies := r.CookiesNamed(name)
+	if count != 1 || len(cookies) != 1 || cookies[0].Value == "" {
+		return "", ErrInvalidCookie
+	}
+	return cookies[0].Value, nil
 }
 
 func cookiePartName(part string) string {

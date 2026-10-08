@@ -3,7 +3,7 @@
 // authorization-code flow.
 //
 // OIDC mode discovers provider endpoints and verifies ID tokens before issuing
-// cookies. Session and login-state cookies are signed JWTs with readable values.
+// cookies. Session and login-state cookies are signed JWTs with readable claims.
 package oauth
 
 import (
@@ -67,6 +67,10 @@ type Config struct {
 
 	// Scopes requested in the authorization request. Defaults to ["openid"].
 	Scopes []string
+
+	// GroupAllowlist optionally limits which exact provider group names are
+	// copied into the session. An empty list preserves every provider group.
+	GroupAllowlist []string
 
 	// CookieSecret is the random 32-byte HS256 signing key loaded from the
 	// base64-encoded file named by oauth_signing_key. Replicas must share the same key.
@@ -142,6 +146,9 @@ func ReadConfig(readFile func(string) ([]byte, error)) (Config, error) {
 
 	if v := os.Getenv("oauth_scopes"); v != "" {
 		cfg.Scopes = splitScopes(v)
+	}
+	if v := os.Getenv("oauth_groups"); strings.TrimSpace(v) != "" {
+		cfg.GroupAllowlist = splitCommaList(v)
 	}
 	if v := os.Getenv("oauth_cookie_name"); v != "" {
 		cfg.CookieName = v
@@ -221,6 +228,24 @@ func splitScopes(raw string) []string {
 		}
 	}
 	return scopes
+}
+
+// splitCommaList trims, removes empty values and de-duplicates a comma-separated list.
+func splitCommaList(raw string) []string {
+	seen := make(map[string]struct{})
+	values := make([]string, 0)
+	for _, value := range strings.Split(raw, ",") {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		values = append(values, value)
+	}
+	return values
 }
 
 // readSecret resolves a secret filename in the fixed OpenFaaS secrets directory.

@@ -13,30 +13,39 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 const (
 	// defaultStateLifetime bounds how long a login attempt stays valid.
 	defaultStateLifetime = 10 * time.Minute
+	loginTokenType       = "login"
 )
 
 type loginSession struct {
+	jwt.RegisteredClaims
+
+	Type     string `json:"typ"`
 	State    string `json:"state"`
 	Verifier string `json:"code_verifier"`
 }
+
+func (s *loginSession) tokenType() string { return s.Type }
 
 // OAuthHandler serves the OAuth authorization-code flow routes: the login page
 // at /auth/login, plus /auth/callback and /auth/logout.
 type OAuthHandler struct {
 	sessionCookie     string
 	loginCookie       string
+	groupAllowlist    []string
 	cookiePath        string
 	sessionDefaultTTL time.Duration
 	sessionTTL        time.Duration
 	secure            bool
 	client            AuthorizationClient
 	mux               *http.ServeMux
-	cookies           *CookieCodec
+	tokens            *cookieCodec
 
 	// loginRedirect is where the browser is sent after a successful login.
 	loginRedirect string
@@ -50,7 +59,7 @@ type OAuthHandler struct {
 // lives in the client, which is constructed by the caller so it can supply
 // its own http.Client.
 func NewOAuthHandler(cfg Config, client AuthorizationClient) (*OAuthHandler, error) {
-	cookies, err := NewCookieCodec(cfg.CookieSecret, cfg.BaseURL.String())
+	tokens, err := newCookieCodec(cfg.CookieSecret, cfg.BaseURL.String())
 	if err != nil {
 		return nil, err
 	}
@@ -58,11 +67,12 @@ func NewOAuthHandler(cfg Config, client AuthorizationClient) (*OAuthHandler, err
 		return nil, err
 	}
 	h := &OAuthHandler{
-		cookies:           cookies,
+		tokens:            tokens,
 		sessionDefaultTTL: cfg.SessionDefaultTTL,
 		sessionTTL:        cfg.SessionTTL,
 		sessionCookie:     cfg.CookieName,
 		loginCookie:       cfg.LoginCookie,
+		groupAllowlist:    append([]string(nil), cfg.GroupAllowlist...),
 		cookiePath:        strings.TrimRight(cfg.BaseURL.EscapedPath(), "/"),
 		secure:            cfg.BaseURL.Scheme == "https",
 		client:            client,
@@ -128,13 +138,20 @@ func (h *OAuthHandler) startLogin(w http.ResponseWriter, r *http.Request) {
 	// In Go 1.26, rand.Read fills the buffer or terminates the process.
 	// It never returns an error or continues with an unfilled verifier.
 	rand.Read(verifier)
+	expires := time.Now().Add(defaultStateLifetime).Truncate(time.Second)
+	claims, err := h.tokens.claims(expires)
+	if err != nil {
+		h.loginError(w, r, "login creation failed", http.StatusInternalServerError, err)
+		return
+	}
 	session := loginSession{
-		State:    rand.Text(),
-		Verifier: base64.RawURLEncoding.EncodeToString(verifier),
+		RegisteredClaims: claims,
+		Type:             loginTokenType,
+		State:            rand.Text(),
+		Verifier:         base64.RawURLEncoding.EncodeToString(verifier),
 	}
 	challenge := sha256.Sum256([]byte(session.Verifier))
-	expires := time.Now().Add(defaultStateLifetime).Truncate(time.Second)
-	value, err := h.cookies.Encode(h.loginCookie, session, expires)
+	value, err := h.tokens.encode(&session)
 	if err != nil {
 		h.loginError(w, r, "login creation failed", http.StatusInternalServerError, err)
 		return
@@ -155,7 +172,11 @@ func (h *OAuthHandler) callback(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
 	code := r.URL.Query().Get("code")
 	var session loginSession
-	err := h.cookies.Decode(h.loginCookie, h.readCookie(r, h.loginCookie), &session)
+	encoded, cookieErr := readSingleCookie(r, h.loginCookie)
+	err := h.tokens.decode(encoded, &session, loginTokenType)
+	if cookieErr != nil {
+		err = cookieErr
+	}
 	if err != nil || state == "" || state != session.State {
 		if err == nil {
 			err = errors.New("login state missing or mismatched")
@@ -200,8 +221,17 @@ func (h *OAuthHandler) callback(w http.ResponseWriter, r *http.Request) {
 		h.loginError(w, r, "identity verification failed; sign in again", http.StatusUnauthorized, err)
 		return
 	}
-	// Provider tokens are not kept; the cookie only holds identity claims.
-	value, err := h.cookies.Encode(h.sessionCookie, identity, expires)
+	identity.FederatedGroups = filterGroups(identity.FederatedGroups, h.groupAllowlist)
+	subject := identity.Subject
+	identity.RegisteredClaims, err = h.tokens.claims(expires)
+	if err != nil {
+		h.loginError(w, r, "session creation failed", http.StatusInternalServerError, err)
+		return
+	}
+	identity.Subject = subject
+	// Provider tokens are not kept; the JWT only holds standard and federated
+	// identity claims at the top level.
+	value, err := h.encodeSession(&identity)
 	if err != nil {
 		h.loginError(w, r, "session creation failed", http.StatusInternalServerError, err)
 		return
@@ -209,6 +239,64 @@ func (h *OAuthHandler) callback(w http.ResponseWriter, r *http.Request) {
 	h.setCookie(w, h.sessionCookie, value, expires)
 
 	http.Redirect(w, r, h.loginRedirect, http.StatusSeeOther)
+}
+
+// filterGroups keeps the provider's ordering while limiting the session to
+// exact group names selected by the function. An empty allowlist imports all
+// groups and leaves the existing cookie-size truncation as the fallback.
+func filterGroups(groups, allowlist []string) []string {
+	if len(allowlist) == 0 {
+		return groups
+	}
+	allowed := make(map[string]struct{}, len(allowlist))
+	for _, group := range allowlist {
+		allowed[group] = struct{}{}
+	}
+	filtered := make([]string, 0, len(allowlist))
+	for _, group := range groups {
+		if _, ok := allowed[group]; ok {
+			filtered = append(filtered, group)
+		}
+	}
+	return filtered
+}
+
+// encodeSession drops groups from the tail only when they would make the
+// browser cookie too large. The claim tells consumers that the remaining set
+// is incomplete, and the warning deliberately excludes group names.
+func (h *OAuthHandler) encodeSession(identity *sessionClaims) (string, error) {
+	value, err := h.tokens.encode(identity)
+	if !errors.Is(err, errCookieTooLarge) || len(identity.FederatedGroups) == 0 {
+		return value, err
+	}
+
+	total := len(identity.FederatedGroups)
+	identity.GroupsTruncated = true
+	groups := identity.FederatedGroups
+	low, high := 0, total-1
+	best := -1
+	bestValue := ""
+	for low <= high {
+		included := low + (high-low)/2
+		identity.FederatedGroups = groups[:included]
+		value, err = h.tokens.encode(identity)
+		if err == nil {
+			best = included
+			bestValue = value
+			low = included + 1
+			continue
+		}
+		if !errors.Is(err, errCookieTooLarge) {
+			return "", err
+		}
+		high = included - 1
+	}
+	if best < 0 {
+		return "", err
+	}
+	identity.FederatedGroups = groups[:best]
+	log.Printf("OAuth session groups truncated: included=%d omitted=%d\n", best, total-best)
+	return bestValue, nil
 }
 
 // logout removes the issued cookies.
@@ -244,15 +332,6 @@ func (h *OAuthHandler) clearCookie(w http.ResponseWriter, name string) {
 		Name: name, Value: "", Path: h.cookiePath, HttpOnly: true,
 		Secure: h.secure, SameSite: http.SameSiteLaxMode, MaxAge: -1,
 	})
-}
-
-// readCookie returns the value of the named cookie, or "" when absent.
-func (h *OAuthHandler) readCookie(r *http.Request, name string) string {
-	cookie, err := r.Cookie(name)
-	if err != nil {
-		return ""
-	}
-	return cookie.Value
 }
 
 // loginError logs a request failure once, then sends a generic built-in page.
