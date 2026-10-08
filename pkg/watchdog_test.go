@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/openfaas/faas-middleware/oauth"
 	"github.com/openfaas/of-watchdog/config"
@@ -152,16 +151,31 @@ func TestMakeOneShotHandlerIgnoresReadyEndpoint(t *testing.T) {
 func TestOAuthSessionThroughHTTPRunner(t *testing.T) {
 	baseURL, _ := url.Parse("https://example.com/function/my-fn")
 	cfg := oauth.Config{
-		BaseURL: baseURL, CookieName: "of_session",
+		BaseURL: baseURL, CookieName: "of_session", LoginCookie: "of_login",
 		CookieSecret: []byte("0123456789abcdef0123456789abcdef"),
 	}
-	codec, err := oauth.NewCookieCodec(cfg.CookieSecret, cfg.BaseURL.String())
+	authHandler, err := oauth.NewOAuthHandler(cfg, watchdogOAuthClient{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := codec.Encode(cfg.CookieName, oauth.Token{AccessToken: "access-token"}, time.Now().Add(time.Hour))
+	login := httptest.NewRecorder()
+	authHandler.ServeHTTP(login, httptest.NewRequest(http.MethodPost, "/auth/login", nil))
+	providerURL, err := url.Parse(login.Header().Get("Location"))
 	if err != nil {
 		t.Fatal(err)
+	}
+	callback := httptest.NewRequest(http.MethodGet, "/auth/callback?code=code&state="+providerURL.Query().Get("state"), nil)
+	callback.AddCookie(login.Result().Cookies()[0])
+	callbackRes := httptest.NewRecorder()
+	authHandler.ServeHTTP(callbackRes, callback)
+	var session string
+	for _, cookie := range callbackRes.Result().Cookies() {
+		if cookie.Name == cfg.CookieName {
+			session = cookie.Value
+		}
+	}
+	if session == "" {
+		t.Fatal("OAuth callback did not issue a session cookie")
 	}
 	var calls atomic.Int32
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -224,4 +238,14 @@ func TestOAuthSessionThroughHTTPRunner(t *testing.T) {
 	if calls.Load() != 2 {
 		t.Fatal("only valid sessions should reach the upstream")
 	}
+}
+
+type watchdogOAuthClient struct{}
+
+func (watchdogOAuthClient) AuthorizationURL(state, _ string) string {
+	return "https://issuer.example/authorize?state=" + url.QueryEscape(state)
+}
+
+func (watchdogOAuthClient) Exchange(context.Context, string, string) (oauth.Token, error) {
+	return oauth.Token{AccessToken: "access-token", ExpiresIn: 3600}, nil
 }

@@ -229,7 +229,23 @@ Unsupported options from the [Classic Watchdog](https://github.com/openfaas/clas
 
 The watchdog can add browser login to a function using an OAuth 2.0 or OpenID Connect (OIDC) provider. It runs the Authorization Code flow with PKCE on your function's behalf, keeps the resulting session in a signed cookie, and validates that cookie before forwarding each request. Your function never has to implement authentication itself.
 
-The provider's access and ID tokens are discarded once login completes and are never stored in the cookie. When the provider returns an ID token, the session keeps only federated identity claims, as with OpenFaaS IAM: `sub` prefixed with `fed:`, the provider's issuer as `fed:iss`, and `email` and `name` when present. With plain OAuth, the session only records that the user signed in.
+The provider's access and ID tokens are discarded once login completes and are never stored in the cookie. The session cookie is a signed JWT with flat claims: `iss`, `aud`, `exp`, `iat`, `typ: session`, and, for OIDC, `sub` prefixed with `fed:` plus the provider's `iss`, `email`, `email_verified`, `name`, and `groups` claims under the `fed:` namespace. For example, `email` becomes `fed:email`. By default, all provider groups are imported in provider order. `oauth_groups` can limit this to a comma-separated list of exact group names; surrounding whitespace and empty entries are ignored. Filtering happens before cookie sizing. If the remaining groups would make the cookie too large, groups are removed from the end, `fed:groups_truncated` is set to `true`, and the watchdog logs the included and omitted counts. A function must not treat the absence of a group as authoritative when `fed:groups_truncated` is true. With plain OAuth, the session only records that the user signed in.
+
+```json
+{
+  "iss": "https://gateway.example.com/function/profile",
+  "sub": "fed:8a2f6c1e-4d7b-4f0a-9c3e-2b5d7e9f1a4c",
+  "aud": ["https://gateway.example.com/function/profile"],
+  "exp": 1800003600,
+  "iat": 1800000000,
+  "typ": "session",
+  "fed:iss": "https://keycloak.example.com/realms/openfaas",
+  "fed:email": "alice@example.com",
+  "fed:email_verified": true,
+  "fed:name": "Alice",
+  "fed:groups": ["admins"]
+}
+```
 
 On every request the watchdog checks for a valid session cookie:
 
@@ -271,6 +287,7 @@ You then point the watchdog at your provider in one of two ways:
 | ------ | ----- |
 | `oauth_client_secret` | Name of a secret under `/var/openfaas/secrets` containing the client secret. Omit for public clients without a secret that support PKCE. |
 | `oauth_scopes` | Space- or comma-separated scopes. Default: `openid`. OIDC always includes `openid`. |
+| `oauth_groups` | Optional comma-separated exact provider group names to copy into `fed:groups`, e.g. `admins, staff`. Entries are trimmed and de-duplicated; provider order is preserved. Unset or blank imports all groups. |
 | `oauth_cookie_name` | Session cookie name. Default: `of_session`. Must be a valid cookie name and differ from the login cookie name. |
 | `oauth_login_cookie_name` | Temporary login cookie name. Default: `of_login`. Must be a valid cookie name and differ from the session cookie name. |
 | `oauth_login_redirect` | Destination after successful login. Defaults to `oauth_base_url`. |
