@@ -7,20 +7,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// parseJWT decodes claims without checking the signature. In OIDC mode,
-// OIDCClient.Exchange has already verified the ID token.
-func parseJWT(raw string) (jwt.MapClaims, error) {
-	claims := jwt.MapClaims{}
-	if _, _, err := jwt.NewParser().ParseUnverified(raw, claims); err != nil {
-		return nil, err
-	}
-	subject, _ := claims["sub"].(string)
-	if subject == "" {
-		return nil, errors.New("JWT missing subject")
-	}
-	return claims, nil
-}
-
 const sessionTokenType = "session"
 
 // sessionClaims are the only state kept in the session cookie. Provider tokens
@@ -40,15 +26,13 @@ type sessionClaims struct {
 
 func (s *sessionClaims) tokenType() string { return s.Type }
 
-// newSession copies identity claims from the ID token, never the tokens.
+// newSession copies only identity claims already verified by the OIDC client,
+// never claims parsed directly from provider tokens.
 func newSession(token Token) (sessionClaims, error) {
-	if token.IDToken == "" {
+	if token.verifiedClaims == nil {
 		return sessionClaims{Type: sessionTokenType}, nil
 	}
-	claims, err := parseJWT(token.IDToken)
-	if err != nil {
-		return sessionClaims{}, err
-	}
+	claims := token.verifiedClaims
 	subject, _ := claims.GetSubject()
 	issuer, _ := claims.GetIssuer()
 	session := sessionClaims{
@@ -89,11 +73,8 @@ func stringClaimValues(value any) ([]string, bool) {
 // sessionExpiry chooses one timestamp for the session JWT and browser cookie.
 func (h *OAuthHandler) sessionExpiry(token Token, now time.Time) (time.Time, error) {
 	expires := now.Add(h.sessionDefaultTTL)
-	if token.IDToken != "" {
-		claims, err := parseJWT(token.IDToken)
-		if err != nil {
-			return time.Time{}, err
-		}
+	if token.verifiedClaims != nil {
+		claims := token.verifiedClaims
 		exp, err := claims.GetExpirationTime()
 		if err != nil || exp == nil || !exp.Time.After(now) {
 			return time.Time{}, errors.New("invalid ID token expiry")

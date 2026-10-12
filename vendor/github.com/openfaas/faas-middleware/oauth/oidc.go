@@ -104,9 +104,11 @@ func (c *OIDCClient) Exchange(ctx context.Context, code, verifier string) (Token
 	if err != nil {
 		return Token{}, err
 	}
-	if _, err := c.VerifyIDToken(ctx, token.IDToken); err != nil {
+	claims, err := c.VerifyIDToken(ctx, token.IDToken)
+	if err != nil {
 		return Token{}, fmt.Errorf("%w: %w", ErrInvalidIDToken, err)
 	}
+	token.verifiedClaims = claims
 	return token, nil
 }
 

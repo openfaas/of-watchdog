@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 const (
@@ -99,6 +101,10 @@ type Token struct {
 	IDToken     string `json:"id_token,omitempty"`
 	AccessToken string `json:"access_token,omitempty"`
 	ExpiresIn   int64  `json:"expires_in,omitempty"`
+
+	// verifiedClaims is populated only after OIDC verification. Session
+	// creation must never derive identity from the raw IDToken field.
+	verifiedClaims jwt.MapClaims
 }
 
 type tokenResponse struct {
